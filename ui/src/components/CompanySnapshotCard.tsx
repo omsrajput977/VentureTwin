@@ -67,3 +67,4 @@ export const CompanySnapshotCard: React.FC<Props> = ({ snapshot }) => {
     </div>
   );
 };
+

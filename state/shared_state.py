@@ -9,7 +9,10 @@ from state.schemas import (
     SimulationRun,
     VerificationResult,
     Report,
-    Event
+    Event,
+    Critique,
+    Rebuttal,
+    Message
 )
 
 class WorkflowState(BaseModel):
@@ -22,6 +25,10 @@ class WorkflowState(BaseModel):
     verification_results: List[VerificationResult] = Field(default_factory=list)
     report: Optional[Report] = None
     events: List[Event] = Field(default_factory=list)
+    ignored_assumptions: List[str] = Field(default_factory=list)
+    skeptic_challenges: List[Dict[str, Any]] = Field(default_factory=list)
+    rebuttals: List[Rebuttal] = Field(default_factory=list)
+    discussion_messages: List[Message] = Field(default_factory=list)
     status: Literal["pending", "running", "completed", "failed", "degraded"] = "pending"
     degraded_agents: List[str] = Field(default_factory=list)
     round: int = 1
@@ -44,3 +51,4 @@ class WorkflowState(BaseModel):
         if task_id in self.tasks:
             self.tasks[task_id].status = "failed"
             self.tasks[task_id].error = error
+

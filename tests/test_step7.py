@@ -70,3 +70,4 @@ async def test_conflict_resolution_via_simulation():
     assert "$" in resolved.resolution
     assert "months runway" in resolved.resolution
     assert not resolved.unresolved
+

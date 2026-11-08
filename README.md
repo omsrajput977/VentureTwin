@@ -3,9 +3,11 @@
 > **AI Flight Simulator & Operational Digital Twin for SaaS CEOs**  
 > *Built for the SwarmFlow: Multi-Agent Task Coordination Engine Hackathon*
 
-[![Test Suite](https://img.shields.io/badge/pytest-37%20passed-emerald)](file:///Users/omrajput/Desktop/Projects/VentureTwin/tests)
+[![Test Suite](https://img.shields.io/badge/pytest-84%20passed%2C%201%20skipped-emerald)](file:///Users/omrajput/Desktop/Projects/VentureTwin/tests)
 [![UI Verification](https://img.shields.io/badge/UI%20check-no%20fake%20numbers-blue)](file:///Users/omrajput/Desktop/Projects/VentureTwin/ui/scripts/check-no-fake-numbers.mjs)
 [![Architecture](https://img.shields.io/badge/Orchestrator-Custom%20Async%20DAG-purple)](#architecture)
+[![Coverage](https://img.shields.io/badge/Acceptance%20Criteria-12%2F12%20Verified-blueviolet)](#scorecard)
+[![CI](https://github.com/omsrajput977/VentureTwin/actions/workflows/ci.yml/badge.svg)](https://github.com/omsrajput977/VentureTwin/actions)
 
 ---
 
@@ -21,15 +23,15 @@
 
 | Milestone | Implementation in VentureTwin | Status |
 |---|---|---|
-| **1. Agent Role Design** | 6 specialized roles (`CFO`, `Growth`, `CTO`, `Customer`, `Product`, `Skeptic`) with divergent objectives, private tools, and structured Pydantic `Finding` outputs. Registry includes extensible placeholders (`Ops`, `Market`, `Risk`). | `[MVP-REAL]` |
-| **2. Task Decomposition Engine** | Natural-language query parser + `TaskDAG` generator. Decomposes decisions into parallel specialist root tasks and downstream synthesis nodes with cycle detection. | `[MVP-REAL]` |
-| **3. Supervisor Architecture** | Async DAG supervisor dispatching independent tasks concurrently via `asyncio`, managing task states, and emitting typed events over an `EventBus`. | `[MVP-REAL]` |
-| **4. Agent Communication Protocol** | Standardized `Finding`, `Assumption`, and `Evidence` schema enforcement. Malformed or hallucinated responses are strictly rejected. | `[MVP-REAL]` |
+| **1. Agent Role Design** | 6 specialized roles (`CFO`, `Growth`, `CTO`, `Customer`, `Product`, `Skeptic`) with divergent objectives, private tools, structured Pydantic `Finding` outputs, and unified `llm_call()` supporting `mock`, `real`, `record`, and `replay` modes. | `[MVP-REAL]` |
+| **2. Task Decomposition Engine** | Natural-language query parser + `TaskDAG` generator with explicit Freemium / Free Plan MVP specialization (and friendly v0.2 notices for price changes). Parallel specialist root tasks, critique, bounded discussion, and synthesis nodes with cycle detection. | `[MVP-REAL]` |
+| **3. Supervisor Architecture** | Async DAG supervisor dispatching independent tasks concurrently via `asyncio`, managing core vs specialist task states, and emitting typed events over an `EventBus`. | `[MVP-REAL]` |
+| **4. Agent Communication Protocol** | Standardized `Finding`, `Assumption`, and `Evidence` schema enforcement with a bounded 1-round peer rebuttal discussion node (`task_agent_discussion`). | `[MVP-REAL]` |
 | **5. Shared State Management** | Typed `WorkflowState` tracking findings, assumptions, conflicts, simulation runs, and SQLite checkpointing after each task completion with seamless resume. | `[MVP-REAL]` |
-| **6. Conflict Detection & Resolution** | Detectors for contradictory recommendations, non-overlapping assumption ranges, and missing evidence. Settle impasses via deterministic dual-run simulation deltas. | `[MVP-REAL]` |
-| **7. Failure Detection & Recovery** | Fault injection hook (`timeout`, `exception`, `bad_output`), backoff retry, degraded mode fallback, and event bus telemetry logging. | `[MVP-REAL]` |
-| **8. Workflow Verification** | Skeptic auditing layer + deterministic algorithmic audits: unit consistency, financial tie-outs, provenance verification, and simulation data traceability. | `[MVP-REAL]` |
-| **9. Final Output Generation** | 10-section consolidated decision report, scenario matrix (conservative/expected/optimistic), sensitivity tornado chart, bisection flip-point search, and human approval gate. | `[MVP-REAL]` |
+| **6. Conflict Detection & Resolution** | Ordinal contradiction detector ($\ge 2$ step difference required) and grouped parameter range conflict detection. Settle impasses via deterministic isolated-parameter simulation runs. | `[MVP-REAL]` |
+| **7. Failure Detection & Recovery** | Fault injection hook (`timeout`, `exception`, `bad_output`), instant timeout simulation, core task resilience (fails fast if CFO/Growth fail terminally), and automated `BackupAnalyst` delegation before degraded mode fallback. | `[MVP-REAL]` |
+| **8. Workflow Verification** | `NumberRegistry` tracking every report number with provenance and tolerances, regex prose scanner detecting untraced figures, unit consistency, financial tie-outs, simulation provenance verification, and bounded loopback on verification failure. | `[MVP-REAL]` |
+| **9. Final Output Generation** | 10-section consolidated decision report, scenario matrix (conservative/expected/optimistic), sensitivity tornado chart, bisection flip-point search, execution plan gates, dynamic calibration error history, and human approval gate. | `[MVP-REAL]` |
 
 ---
 
@@ -37,33 +39,41 @@
 
 ```mermaid
 graph TD
-    User["Founder / Strategy Lead"] --> Intake["Decision Intake & Parser"]
+    User["Founder / Strategy Lead"] --> Intake["Decision Intake & Scope Parser"]
     Intake --> Supervisor["Central Supervisor (Async DAG Engine)"]
     
-    subgraph "Parallel Specialist Agents (Milestones 1 & 3)"
+    subgraph "Core Tasks (Fail-Fast Resilience)"
         Supervisor --> CFO["CFO Agent (Runway & Margins)"]
         Supervisor --> Growth["Growth Agent (Acquisition & Funnel)"]
+    end
+
+    subgraph "Specialist Tasks (BackupAnalyst Fallback)"
         Supervisor --> CTO["CTO Agent (Infra & Compute Load)"]
         Supervisor --> Customer["Customer Agent (Retention & Cannibalization)"]
         Supervisor --> Product["Product Agent (Feature Packaging)"]
+        CTO -. On Failure .-> Backup["Backup Analyst Agent"]
+        Customer -. On Failure .-> Backup
+        Product -. On Failure .-> Backup
     end
 
-    CFO --> Skeptic["Skeptic Agent (Assumption Auditor)"]
+    CFO --> Skeptic["Skeptic Agent (Auditor & Grounded Benchmarks)"]
     Growth --> Skeptic
     CTO --> Skeptic
     Customer --> Skeptic
     Product --> Skeptic
+    Backup --> Skeptic
 
-    Skeptic --> Conflict["Simulation-Backed Conflict Resolver"]
-    Conflict --> Sim["Deterministic SaaS Dynamics Simulator (NumPy)"]
-    Sim --> Verifier["Deterministic Verification Layer"]
+    Skeptic --> Discussion["Agent Discussion Node (1-Round Bounded Rebuttal)"]
+    Discussion --> Conflict["Simulation-Backed Conflict Resolver (Isolated Sim Runs)"]
+    Conflict --> Sim["Deterministic SaaS Dynamics Simulator (NumPy 24mo)"]
+    Sim --> Verifier["Verification Layer (NumberRegistry + Regex Prose Audit)"]
     Verifier --> Report["10-Section Consolidated Decision Report"]
     Report --> Gate["Human-in-the-Loop Sign-Off Gate"]
-    Gate --> History["Decision Calibration & Memory"]
+    Gate --> History["Decision Calibration & Memory (Dynamic Calculation)"]
 
     Supervisor -. Checkpoints .-> SQLite[("SQLite State Store")]
     Supervisor -. Live Telemetry .-> SSE["EventBus / SSE Stream"]
-    SSE --> UI["React + Tailwind Dashboard"]
+    SSE --> UI["React + Tailwind Dashboard (MOCK MODE & DEGRADED Badges)"]
 ```
 
 ---
@@ -71,18 +81,20 @@ graph TD
 ## ⚖️ Real vs. Mocked (Strict Transparency)
 
 - **What is REAL (`[MVP-REAL]`):**
-  - Multi-agent orchestration, task DAG decomposition, parallel execution.
-  - Deterministic 24-month SaaS dynamics simulation model.
+  - Multi-agent orchestration, task DAG decomposition, parallel execution with core vs specialist task distinction.
+  - LLM invocation through `llm_call()` supporting `mock`, `real`, `record`, and `replay` modes across Gemini, OpenAI, and Anthropic.
+  - Deterministic 24-month SaaS dynamics simulation model with externalized `data/model_config.json` establishing genuine Strategy A vs Strategy B trade-offs.
   - Monte Carlo sampling and One-At-A-Time (OAT) Tornado sensitivity analysis.
   - Bisection root-finding for exact decision flip points.
-  - Simulation-based conflict resolution (no voting, no LLM choosing winners).
-  - Runtime fault injection and autonomous recovery.
-  - Verification layer that detects data tampering.
-  - FastAPI backend and React frontend.
+  - Simulation-based conflict resolution (no voting, no LLM choosing winners) using isolated single-parameter simulations.
+  - Runtime fault injection and autonomous recovery (`BackupAnalyst` fallback, instant timeout injection).
+  - Verification layer with `NumberRegistry` and regex prose audit ensuring 100% of executive numbers trace to input or simulation.
+  - FastAPI backend and React frontend with honest status indicators.
 - **What is SEEDED (`[MVP-MOCK]`):**
-  - Company dataset: `NimbusDesk` synthetic Series A SaaS telemetry (`data/synthetic_company.json`).
+  - Company dataset: `NimbusDesk` synthetic Series A SaaS telemetry (`data/synthetic_company.json`) with fully grounded metrics.
+  - Grounded B2B SaaS benchmarks: `data/benchmarks.json` sourced from industry SaaS research.
   - Historical decisions: 4 seeded past decisions for calibration error analysis (`data/seeded_decisions.json`).
-  - LLM Provider: Runs in `mock` mode by default for 100% deterministic, zero-token test runs; swappable to `real` mode with `GEMINI_API_KEY` or `OPENAI_API_KEY`.
+  - LLM Provider: Runs in `mock` mode by default for 100% deterministic, zero-token test runs; swappable to `real` mode with `GEMINI_API_KEY`, `OPENAI_API_KEY`, or `ANTHROPIC_API_KEY`.
 
 ---
 
@@ -103,7 +115,6 @@ python3 -m venv .venv
 source .venv/bin/activate
 
 # Install Python dependencies
-pip install -r <(pip list --format=freeze) # or:
 pip install fastapi uvicorn pydantic numpy scipy pytest pytest-asyncio httpx
 ```
 
@@ -132,7 +143,7 @@ npm run dev
 
 ## 🧪 Automated Test Suite
 
-Run the full pytest suite (37 tests across unit, integration, and acceptance criteria):
+Run the full pytest suite (84 passed, 1 skipped across unit, integration, and acceptance criteria):
 ```bash
 ./.venv/bin/pytest
 ```
@@ -147,3 +158,4 @@ node ui/scripts/check-no-fake-numbers.mjs
 ## 📜 Demo Script
 
 See [docs/DEMO_SCRIPT.md](file:///Users/omrajput/Desktop/Projects/VentureTwin/docs/DEMO_SCRIPT.md) for a step-by-step 3-minute hackathon judge walkthrough.
+

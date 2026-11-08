@@ -1,3 +1,4 @@
+import os
 from typing import Dict, Any, List, Optional
 from state.schemas import (
     Report,
@@ -9,7 +10,8 @@ from state.schemas import (
     Finding
 )
 from report.decision_logic import rank_strategies, compute_confidence, RankedStrategy
-from data.loader import load_company_data
+from report.number_registry import NumberRegistry
+from data.loader import load_company_data, load_model_config
 
 def build_consolidated_report(
     decision: Decision,
@@ -42,6 +44,8 @@ def build_consolidated_report(
     else:
         rec_title = "Do not proceed with any free-plan strategy under current constraints"
 
+    reg = NumberRegistry()
+
     # 1. Executive Summary
     flip_thresh_str = f"{flip_point_info.get('threshold', 0.0) * 100:.2f}%" if flip_point_info.get('has_flip_point') else "N/A"
     exec_summary = (
@@ -51,6 +55,37 @@ def build_consolidated_report(
         f"(safety threshold: {decision.constraints.get('min_runway_months', 10.0):.1f} mo). "
         f"The recommendation remains viable as long as free-to-paid conversion stays above {flip_thresh_str}."
     )
+
+    if top_strategy:
+        reg.register(
+            value=top_strategy.net_contribution_12,
+            path="sections.executive_summary.net_contribution_12",
+            origin=f"simulation_run:{top_strategy.strategy}_expected",
+            expected_value=top_strategy.net_contribution_12
+        )
+        reg.register(
+            value=top_strategy.runway_months_12,
+            path="sections.executive_summary.runway_months_12",
+            origin=f"simulation_run:{top_strategy.strategy}_expected",
+            expected_value=top_strategy.runway_months_12
+        )
+
+    min_runway_constraint = float(decision.constraints.get('min_runway_months', 10.0))
+    reg.register(
+        value=min_runway_constraint,
+        path="sections.executive_summary.min_runway_months",
+        origin="decision.constraints.min_runway_months",
+        expected_value=min_runway_constraint
+    )
+
+    if flip_point_info.get("has_flip_point"):
+        thresh = float(flip_point_info.get("threshold", 0.0))
+        reg.register(
+            value=thresh,
+            path="sections.flip_points.threshold",
+            origin="calculation:flip_point",
+            expected_value=thresh
+        )
 
     # 2. Current Position
     fin = data.get("financials", {})
@@ -66,14 +101,41 @@ def build_consolidated_report(
         "synthetic_data_badge": True
     }
 
+    for k, v in [
+        ("mrr", fin.get("mrr", 0.0)),
+        ("arr", fin.get("arr", 0.0)),
+        ("cash_balance", fin.get("cash_balance", 0.0)),
+        ("runway_months", fin.get("runway_months", 0.0)),
+        ("paying_customers", cust.get("total_paying", 0))
+    ]:
+        reg.register(
+            value=float(v),
+            path=f"sections.current_position.{k}",
+            origin=f"company_data.{k}",
+            expected_value=float(v)
+        )
+
     # 3. Strategies Compared
     strategies_compared = [r.model_dump() for r in ranked]
+    for i, strat in enumerate(ranked):
+        reg.register(
+            value=strat.net_contribution_12,
+            path=f"sections.strategies_compared[{i}].net_contribution_12",
+            origin=f"simulation_run:{strat.strategy}",
+            expected_value=strat.net_contribution_12
+        )
+        reg.register(
+            value=strat.runway_months_12,
+            path=f"sections.strategies_compared[{i}].runway_months_12",
+            origin=f"simulation_run:{strat.strategy}",
+            expected_value=strat.runway_months_12
+        )
 
     # 4. Scenario Table
     scenario_table = []
-    for r in sim_runs:
+    for i, r in enumerate(sim_runs):
         out = r.outputs
-        scenario_table.append({
+        row = {
             "strategy": r.strategy,
             "scenario": r.scenario,
             "mrr_12": out.get("mrr_12", 0.0),
@@ -81,7 +143,27 @@ def build_consolidated_report(
             "runway_months_12": out.get("runway_months_12", 0.0),
             "gross_margin_12": out.get("gross_margin_12", 0.0),
             "support_headcount_12": out.get("support_headcount_12", 0)
-        })
+        }
+        scenario_table.append(row)
+
+        reg.register(
+            value=float(row["mrr_12"]),
+            path=f"sections.scenario_table[{i}].mrr_12",
+            origin=f"simulation_run:{r.id}",
+            expected_value=float(row["mrr_12"])
+        )
+        reg.register(
+            value=float(row["net_contribution_12"]),
+            path=f"sections.scenario_table[{i}].net_contribution_12",
+            origin=f"simulation_run:{r.id}",
+            expected_value=float(row["net_contribution_12"])
+        )
+        reg.register(
+            value=float(row["runway_months_12"]),
+            path=f"sections.scenario_table[{i}].runway_months_12",
+            origin=f"simulation_run:{r.id}",
+            expected_value=float(row["runway_months_12"])
+        )
 
     # 5. Conflicts Resolution
     conflicts_resolution = [
@@ -114,6 +196,20 @@ def build_consolidated_report(
         }
     ]
 
+    # Grounded execution plan phases and gates
+    execution_plan = [
+        {
+            "phase": "Phase 1: Gated Beta Rollout (Months 1-3)",
+            "gate": f"Conversion >= {flip_thresh_str} and Runway >= {min_runway_constraint:.1f} mo",
+            "action": "Enable self-serve signups with strict product limits and monitor support load."
+        },
+        {
+            "phase": "Phase 2: Full Distribution Scale (Months 4-12)",
+            "gate": f"Gross margin >= 70% and Runway >= {min_runway_constraint:.1f} mo",
+            "action": "Accelerate in-app upgrade triggers and expand self-serve marketing funnels."
+        }
+    ]
+
     # 8. Verification Summary
     verif_summary = [v.model_dump() for v in verification_results]
 
@@ -128,8 +224,13 @@ def build_consolidated_report(
         "flip_points": flip_point_info,
         "assumption_ledger": ledger,
         "risks_and_triggers": risks_and_triggers,
+        "execution_plan": execution_plan,
+        "model_constants": load_model_config(),
+        "llm_mode": os.getenv("LLM_MODE", "mock").lower(),
+        "outcome_ranges": mc_summary.get("quantiles", {}) if mc_summary else {},
         "verification_summary": verif_summary,
-        "monte_carlo": mc_summary or {}
+        "monte_carlo": mc_summary or {},
+        "number_registry": reg.to_dict()
     }
 
     disclaimers = [
@@ -203,3 +304,4 @@ def render_markdown_report(report: Report, workflow_status: str = "completed") -
         lines.append(f"> {d}")
 
     return "\n".join(lines)
+

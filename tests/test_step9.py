@@ -47,7 +47,23 @@ def sample_valid_setup():
             "flip_points": {},
             "assumption_ledger": [],
             "risks_and_triggers": [],
-            "verification_summary": []
+            "verification_summary": [],
+            "number_registry": [
+                {
+                    "value": 1009694.58,
+                    "path": "scenario_table[0].net_contribution_12",
+                    "origin": "sim_b_exp_1",
+                    "expected_value": 1009694.58,
+                    "tolerance": 0.01
+                },
+                {
+                    "value": 233878.0,
+                    "path": "scenario_table[0].mrr_12",
+                    "origin": "sim_b_exp_1",
+                    "expected_value": 233878.0,
+                    "tolerance": 0.01
+                }
+            ]
         }
     )
     return report, [sim_run], assumptions, data
@@ -76,3 +92,4 @@ def test_missing_required_section(sample_valid_setup):
     res = verify_required_sections(report)
     assert res.status == "failed"
     assert "executive_summary" in res.detail
+

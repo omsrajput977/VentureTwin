@@ -1,7 +1,17 @@
-from typing import Dict, Any, Optional, List
+import json
+from typing import Dict, Any, Optional, List, Tuple
 from agents.base_agent import BaseAgent
 from agents.llm_client import LLMClient, llm_call
-from state.schemas import Finding, Task, Assumption, Evidence
+from state.schemas import (
+    Finding,
+    Task,
+    Assumption,
+    Evidence,
+    AgentFindingDraft,
+    ProvenanceType
+)
+from simulation.params import SIM_PARAMS
+from data.loader import load_company_data, load_benchmarks
 from agents.tools import (
     lookup_financials,
     lookup_funnel,
@@ -9,6 +19,69 @@ from agents.tools import (
     lookup_infra_costs,
     lookup_support_metrics
 )
+
+def resolve_provenance_and_validate(
+    draft_name: str,
+    draft_low: float,
+    draft_base: float,
+    draft_high: float,
+    draft_unit: str,
+    basis: str,
+    company_data: Dict[str, Any],
+    benchmark_ids: set
+) -> Tuple[Optional[Assumption], Optional[str]]:
+    """
+    Assigns provenance strictly in code.
+    Filters against SIM_PARAMS. Unknown parameters return (None, draft_name).
+    """
+    if draft_name not in SIM_PARAMS:
+        return None, draft_name
+
+    spec = SIM_PARAMS[draft_name]
+    clamped_low = max(spec.lower_bound, min(spec.upper_bound, draft_low))
+    clamped_base = max(spec.lower_bound, min(spec.upper_bound, draft_base))
+    clamped_high = max(spec.lower_bound, min(spec.upper_bound, draft_high))
+
+    # Enforce low <= base <= high
+    if clamped_low > clamped_base:
+        clamped_low = clamped_base
+    if clamped_base > clamped_high:
+        clamped_high = clamped_base
+
+    provenance: ProvenanceType = "ai_assumption"
+    source_ref = None
+
+    if basis in benchmark_ids:
+        provenance = "external_research"
+        source_ref = basis
+    elif basis:
+        # Check if basis matches a path in company_data
+        parts = basis.split(".")
+        curr: Any = company_data
+        found = True
+        for p in parts:
+            if isinstance(curr, dict) and p in curr:
+                curr = curr[p]
+            else:
+                found = False
+                break
+        if found and isinstance(curr, (int, float)):
+            if abs(float(curr) - float(clamped_base)) <= max(0.01, 0.05 * abs(float(curr))):
+                provenance = "verified_data"
+                source_ref = basis
+
+    asm = Assumption(
+        name=draft_name,
+        low=round(clamped_low, 4),
+        base=round(clamped_base, 4),
+        high=round(clamped_high, 4),
+        unit=spec.unit,
+        provenance=provenance,
+        source_ref=source_ref,
+        confidence=0.85 if provenance == "verified_data" else 0.70 if provenance == "external_research" else 0.60
+    )
+    return asm, None
+
 
 class CFOAgent(BaseAgent):
     def __init__(self):
@@ -18,7 +91,8 @@ class CFOAgent(BaseAgent):
             objective="Protect runway and gross margins; prevent unmonetized cost explosions",
             system_prompt=(
                 "You are the CFO. Your duty is to protect company runway and margins. "
-                "Evaluate the proposed decision against cash reserves and burn rate constraints."
+                "Propose assumption ranges for financial levers; never generate final outcome numbers. "
+                "Every claim must cite a tool data field."
             ),
             tools={"lookup_financials": lookup_financials}
         )
@@ -30,62 +104,45 @@ class CFOAgent(BaseAgent):
         llm_client: Optional[LLMClient] = None
     ) -> Finding:
         fin = await self.execute_tool("lookup_financials")
-        runway = fin["runway_months"]
-        cash = fin["cash_balance"]
-        min_runway = fin.get("target_min_runway_months", 10.0)
+        company_data = load_company_data()
+        benchmarks = {b["id"] for b in load_benchmarks()}
 
-        # Dynamic calculation based on cash constraint
-        is_constrained = runway < min_runway or cash < 500000
-        rec = "reject" if is_constrained else "proceed_with_limits"
-        claim = (
-            f"Runway is {runway:.1f} months ($1.65M cash). Free plan without strict usage caps "
-            f"risks compressing runway below the {min_runway:.1f}-month safety threshold."
-        ) if not is_constrained else (
-            f"Severe runway hazard ({runway:.1f} months). Free plan cannot be financed under current cash reserves."
+        prompt = (
+            f"Role: {self.role}\n"
+            f"Objective: {self.objective}\n"
+            f"Company Financials: {json.dumps(fin)}\n"
+            f"Allowed SIM_PARAMS: {list(SIM_PARAMS.keys())}\n"
+            "Evaluate decision to launch a free tier. Propose structured assumptions with ranges."
         )
 
-        assumptions = [
-            Assumption(
-                name="free_to_paid_conversion",
-                low=0.010,
-                base=0.015,
-                high=0.022,
-                unit="rate",
-                provenance="simulated_estimate",
-                confidence=0.70,
-                proposed_by=self.name,
-                source_ref="cfo_cohort_analysis"
-            ),
-            Assumption(
-                name="min_acceptable_runway_months",
-                low=8.0,
-                base=min_runway,
-                high=12.0,
-                unit="months",
-                provenance="verified_data",
-                confidence=0.95,
-                proposed_by=self.name,
-                source_ref="financials.target_min_runway_months"
-            )
-        ]
+        draft: AgentFindingDraft = await llm_call(
+            prompt=prompt,
+            response_model=AgentFindingDraft,
+            system_prompt=self.system_prompt,
+            client=llm_client
+        )
 
-        evidence = [
-            Evidence(
-                source_type="company_data",
-                source_ref="financials.cash_balance",
-                snippet=f"Cash balance: ${cash:,.2f}, Net monthly burn: ${fin['monthly_burn_net']:,.2f}, Runway: {runway:.1f} months."
+        valid_assumptions = []
+        for d_asm in draft.assumptions:
+            asm, ignored = resolve_provenance_and_validate(
+                d_asm.name, d_asm.low, d_asm.base, d_asm.high, d_asm.unit,
+                d_asm.basis, company_data, benchmarks
             )
-        ]
+            if asm:
+                asm.proposed_by = self.name
+                valid_assumptions.append(asm)
+            elif ignored and "state" in context:
+                context["state"].ignored_assumptions.append(ignored)
 
         return Finding(
             agent=self.name,
             task_id=task.id,
-            claim=claim,
-            recommendation=rec,
-            assumptions=assumptions,
-            evidence=evidence,
-            confidence=0.82,
-            limitations=["Assumes fixed baseline opex without secondary headcount expansion."],
+            claim=draft.claim,
+            recommendation=draft.recommendation,
+            assumptions=valid_assumptions,
+            evidence=draft.evidence,
+            confidence=draft.confidence,
+            limitations=draft.limitations,
             status="ok"
         )
 
@@ -97,8 +154,8 @@ class GrowthAgent(BaseAgent):
             role="Chief Marketing Officer & VP Growth",
             objective="Maximize top-of-funnel acquisition, organic user growth, and conversion volume",
             system_prompt=(
-                "You are the VP of Growth. Your duty is to scale customer acquisition, reduce trial friction, "
-                "and build self-serve viral flywheels."
+                "You are the VP of Growth. Scale customer acquisition and build self-serve viral flywheels. "
+                "Propose assumption ranges; never fabricate outcomes."
             ),
             tools={"lookup_funnel": lookup_funnel}
         )
@@ -110,50 +167,45 @@ class GrowthAgent(BaseAgent):
         llm_client: Optional[LLMClient] = None
     ) -> Finding:
         funnel = await self.execute_tool("lookup_funnel")
-        visitors = funnel["monthly_visitors"]
+        company_data = load_company_data()
+        benchmarks = {b["id"] for b in load_benchmarks()}
 
-        assumptions = [
-            Assumption(
-                name="free_to_paid_conversion",
-                low=0.025,
-                base=0.035,
-                high=0.050,
-                unit="rate",
-                provenance="external_research",
-                confidence=0.65,
-                proposed_by=self.name,
-                source_ref="funnel_benchmark_survey"
-            ),
-            Assumption(
-                name="monthly_free_signups",
-                low=2500.0,
-                base=3800.0,
-                high=5200.0,
-                unit="users/month",
-                provenance="simulated_estimate",
-                confidence=0.70,
-                proposed_by=self.name,
-                source_ref="funnel_top_estimate"
-            )
-        ]
+        prompt = (
+            f"Role: {self.role}\n"
+            f"Objective: {self.objective}\n"
+            f"Company Funnel Data: {json.dumps(funnel)}\n"
+            f"Allowed SIM_PARAMS: {list(SIM_PARAMS.keys())}\n"
+            "Evaluate top-of-funnel opportunity for free plan. Propose structured assumptions."
+        )
 
-        evidence = [
-            Evidence(
-                source_type="company_data",
-                source_ref="funnel.monthly_visitors",
-                snippet=f"Site receives {visitors:,} unique visitors/month with only {funnel['trial_signups']} trial starts."
+        draft: AgentFindingDraft = await llm_call(
+            prompt=prompt,
+            response_model=AgentFindingDraft,
+            system_prompt=self.system_prompt,
+            client=llm_client
+        )
+
+        valid_assumptions = []
+        for d_asm in draft.assumptions:
+            asm, ignored = resolve_provenance_and_validate(
+                d_asm.name, d_asm.low, d_asm.base, d_asm.high, d_asm.unit,
+                d_asm.basis, company_data, benchmarks
             )
-        ]
+            if asm:
+                asm.proposed_by = self.name
+                valid_assumptions.append(asm)
+            elif ignored and "state" in context:
+                context["state"].ignored_assumptions.append(ignored)
 
         return Finding(
             agent=self.name,
             task_id=task.id,
-            claim="A friction-free entry tier will unlock top-of-funnel velocity, generating 3,800+ signups/mo.",
-            recommendation="proceed",
-            assumptions=assumptions,
-            evidence=evidence,
-            confidence=0.78,
-            limitations=["Dependent on product onboarding self-serve experience."],
+            claim=draft.claim,
+            recommendation=draft.recommendation,
+            assumptions=valid_assumptions,
+            evidence=draft.evidence,
+            confidence=draft.confidence,
+            limitations=draft.limitations,
             status="ok"
         )
 
@@ -165,8 +217,8 @@ class CTOAgent(BaseAgent):
             role="Chief Technology Officer",
             objective="Ensure platform scalability, uptime SLAs, and contain cloud compute/database costs",
             system_prompt=(
-                "You are the CTO. Evaluate infrastructure load, serverless compute limits, "
-                "and marginal infrastructure costs per active free user."
+                "You are the CTO. Evaluate infrastructure load and marginal cloud cost per active free user. "
+                "Propose parameter bounds; do not compute outcome metrics."
             ),
             tools={"lookup_infra_costs": lookup_infra_costs}
         )
@@ -178,39 +230,45 @@ class CTOAgent(BaseAgent):
         llm_client: Optional[LLMClient] = None
     ) -> Finding:
         infra = await self.execute_tool("lookup_infra_costs")
-        per_free_cost = infra.get("infra_cost_per_free_user_estimate", 1.15)
+        company_data = load_company_data()
+        benchmarks = {b["id"] for b in load_benchmarks()}
 
-        assumptions = [
-            Assumption(
-                name="infra_cost_per_free_user",
-                low=0.75,
-                base=per_free_cost,
-                high=1.85,
-                unit="USD/user/month",
-                provenance="verified_data",
-                confidence=0.88,
-                proposed_by=self.name,
-                source_ref="infrastructure.infra_cost_per_free_user_estimate"
-            )
-        ]
+        prompt = (
+            f"Role: {self.role}\n"
+            f"Objective: {self.objective}\n"
+            f"Infrastructure Telemetry: {json.dumps(infra)}\n"
+            f"Allowed SIM_PARAMS: {list(SIM_PARAMS.keys())}\n"
+            "Evaluate infrastructure feasibility and usage caps."
+        )
 
-        evidence = [
-            Evidence(
-                source_type="company_data",
-                source_ref="infrastructure.monthly_cloud_cost",
-                snippet=f"Baseline cloud spend is ${infra['monthly_cloud_cost']:,}/mo; estimated free-user cost is ${per_free_cost:.2f}/user/mo."
+        draft: AgentFindingDraft = await llm_call(
+            prompt=prompt,
+            response_model=AgentFindingDraft,
+            system_prompt=self.system_prompt,
+            client=llm_client
+        )
+
+        valid_assumptions = []
+        for d_asm in draft.assumptions:
+            asm, ignored = resolve_provenance_and_validate(
+                d_asm.name, d_asm.low, d_asm.base, d_asm.high, d_asm.unit,
+                d_asm.basis, company_data, benchmarks
             )
-        ]
+            if asm:
+                asm.proposed_by = self.name
+                valid_assumptions.append(asm)
+            elif ignored and "state" in context:
+                context["state"].ignored_assumptions.append(ignored)
 
         return Finding(
             agent=self.name,
             task_id=task.id,
-            claim="Infrastructure can absorb up to 5,000 free users if rate limits and database storage quotas are strictly capped.",
-            recommendation="proceed_with_limits",
-            assumptions=assumptions,
-            evidence=evidence,
-            confidence=0.85,
-            limitations=["Requires engineering to implement Redis-based quota enforcers."],
+            claim=draft.claim,
+            recommendation=draft.recommendation,
+            assumptions=valid_assumptions,
+            evidence=draft.evidence,
+            confidence=draft.confidence,
+            limitations=draft.limitations,
             status="ok"
         )
 
@@ -222,8 +280,8 @@ class CustomerAgent(BaseAgent):
             role="VP Customer Success & Retention",
             objective="Protect existing customer base from churn, minimize cannibalization of paid plans",
             system_prompt=(
-                "You are the VP of Customer Success. Ensure existing paying accounts do not downgrade "
-                "and support queues remain responsive."
+                "You are the VP of Customer Success. Protect paying subscribers from cannibalization. "
+                "Propose churn and cannibalization assumption ranges."
             ),
             tools={"lookup_customers": lookup_customers, "lookup_support": lookup_support_metrics}
         )
@@ -235,39 +293,45 @@ class CustomerAgent(BaseAgent):
         llm_client: Optional[LLMClient] = None
     ) -> Finding:
         customers = await self.execute_tool("lookup_customers")
-        total_paying = customers["total_paying"]
+        company_data = load_company_data()
+        benchmarks = {b["id"] for b in load_benchmarks()}
 
-        assumptions = [
-            Assumption(
-                name="paid_to_free_cannibalization",
-                low=0.04,
-                base=0.08,
-                high=0.15,
-                unit="rate",
-                provenance="ai_assumption",
-                confidence=0.60,
-                proposed_by=self.name,
-                source_ref="starter_tier_feature_overlap"
-            )
-        ]
+        prompt = (
+            f"Role: {self.role}\n"
+            f"Objective: {self.objective}\n"
+            f"Customer Metrics: {json.dumps(customers)}\n"
+            f"Allowed SIM_PARAMS: {list(SIM_PARAMS.keys())}\n"
+            "Evaluate cannibalization and retention impact."
+        )
 
-        evidence = [
-            Evidence(
-                source_type="company_data",
-                source_ref="customers.total_paying",
-                snippet=f"Currently {total_paying} active paying subscribers, with 450 on Starter ($79/mo)."
+        draft: AgentFindingDraft = await llm_call(
+            prompt=prompt,
+            response_model=AgentFindingDraft,
+            system_prompt=self.system_prompt,
+            client=llm_client
+        )
+
+        valid_assumptions = []
+        for d_asm in draft.assumptions:
+            asm, ignored = resolve_provenance_and_validate(
+                d_asm.name, d_asm.low, d_asm.base, d_asm.high, d_asm.unit,
+                d_asm.basis, company_data, benchmarks
             )
-        ]
+            if asm:
+                asm.proposed_by = self.name
+                valid_assumptions.append(asm)
+            elif ignored and "state" in context:
+                context["state"].ignored_assumptions.append(ignored)
 
         return Finding(
             agent=self.name,
             task_id=task.id,
-            claim="Starter plan ($79/mo) faces cannibalization risk of 8-15% if the free tier includes exports or integrations.",
-            recommendation="proceed_with_limits",
-            assumptions=assumptions,
-            evidence=evidence,
-            confidence=0.72,
-            limitations=["Survey sample on Starter users is limited to last quarter."],
+            claim=draft.claim,
+            recommendation=draft.recommendation,
+            assumptions=valid_assumptions,
+            evidence=draft.evidence,
+            confidence=draft.confidence,
+            limitations=draft.limitations,
             status="ok"
         )
 
@@ -278,7 +342,7 @@ class ProductAgent(BaseAgent):
             name="Product",
             role="VP Product",
             objective="Define product packaging, feature gates, and self-serve upgrade milestones",
-            system_prompt="You are the VP of Product. Design gating boundaries between Free, Starter, and Pro plans."
+            system_prompt="You are the VP of Product. Propose gating friction and conversion uplift assumptions."
         )
 
     async def _execute_core(
@@ -287,33 +351,44 @@ class ProductAgent(BaseAgent):
         context: Dict[str, Any],
         llm_client: Optional[LLMClient] = None
     ) -> Finding:
+        company_data = load_company_data()
+        benchmarks = {b["id"] for b in load_benchmarks()}
+
+        prompt = (
+            f"Role: {self.role}\n"
+            f"Objective: {self.objective}\n"
+            f"Allowed SIM_PARAMS: {list(SIM_PARAMS.keys())}\n"
+            "Propose feature gating tradeoffs for Strategy B usage caps."
+        )
+
+        draft: AgentFindingDraft = await llm_call(
+            prompt=prompt,
+            response_model=AgentFindingDraft,
+            system_prompt=self.system_prompt,
+            client=llm_client
+        )
+
+        valid_assumptions = []
+        for d_asm in draft.assumptions:
+            asm, ignored = resolve_provenance_and_validate(
+                d_asm.name, d_asm.low, d_asm.base, d_asm.high, d_asm.unit,
+                d_asm.basis, company_data, benchmarks
+            )
+            if asm:
+                asm.proposed_by = self.name
+                valid_assumptions.append(asm)
+            elif ignored and "state" in context:
+                context["state"].ignored_assumptions.append(ignored)
+
         return Finding(
             agent=self.name,
             task_id=task.id,
-            claim="Strategy B (Usage Caps) creates the most natural friction point for self-serve upgrades without gating essential utility.",
-            recommendation="proceed_with_limits",
-            assumptions=[
-                Assumption(
-                    name="activation_drop_from_gating",
-                    low=0.05,
-                    base=0.10,
-                    high=0.20,
-                    unit="rate",
-                    provenance="simulated_estimate",
-                    confidence=0.70,
-                    proposed_by=self.name,
-                    source_ref="product_onboarding_benchmarks"
-                )
-            ],
-            evidence=[
-                Evidence(
-                    source_type="calculation",
-                    source_ref="feature_matrix",
-                    snippet="Capping at 3 team members and 500 tickets/mo protects 92% of Starter value proposition."
-                )
-            ],
-            confidence=0.80,
-            limitations=["Depends on UI upgrade prompts deployed in app."],
+            claim=draft.claim,
+            recommendation=draft.recommendation,
+            assumptions=valid_assumptions,
+            evidence=draft.evidence,
+            confidence=draft.confidence,
+            limitations=draft.limitations,
             status="ok"
         )
 
@@ -337,21 +412,37 @@ class SkepticAgent(BaseAgent):
         llm_client: Optional[LLMClient] = None
     ) -> Finding:
         findings: List[Finding] = context.get("findings", [])
-        challenged_assumptions = []
+        challenges: List[Dict[str, Any]] = []
 
-        # Audit findings for unverified optimism
+        benchmarks = {b["id"]: b for b in load_benchmarks()}
+        freemium_spec = benchmarks.get("b2b_saas_freemium_conversion", {})
+        grounded_threshold = round(
+            (freemium_spec.get("value_low", 0.01) + freemium_spec.get("value_high", 0.035)) / 2.0, 4
+        )
+
+        # Audit assumptions against grounded benchmark midpoint (no magic literals)
         for f in findings:
             for asm in f.assumptions:
-                if asm.name == "free_to_paid_conversion" and asm.base > 0.025:
-                    # Challenge Growth's assumption
-                    asm.challenged_by_skeptic = True
-                    asm.confidence = round(max(0.3, asm.confidence - 0.20), 2)
-                    challenged_assumptions.append(asm)
+                if asm.name == "free_to_paid_conversion" and asm.base > grounded_threshold:
+                    challenge = {
+                        "agent": f.agent,
+                        "assumption": asm.name,
+                        "base": asm.base,
+                        "grounded_threshold": grounded_threshold,
+                        "challenge": (
+                            f"Proposed conversion ({asm.base*100:.1f}%) exceeds grounded freemium benchmark midpoint "
+                            f"({grounded_threshold*100:.2f}% from b2b_saas_freemium_conversion) without self-serve historical telemetry."
+                        ),
+                        "confidence_penalty": 0.15
+                    }
+                    challenges.append(challenge)
+                    if "state" in context:
+                        context["state"].skeptic_challenges.append(challenge)
 
         claim = (
-            f"Challenged {len(challenged_assumptions)} assumption(s). Growth's conversion estimate of 3.5% "
-            f"lacks historical self-serve telemetry in NimbusDesk's data and carries external research provenance."
-        ) if challenged_assumptions else "All reviewed assumptions meet baseline provenance standards."
+            f"Challenged {len(challenges)} assumption(s). Free conversion estimate exceeds grounded benchmark midpoint "
+            f"({grounded_threshold*100:.2f}% in b2b_saas_freemium_conversion) and carries external research provenance."
+        ) if challenges else "All reviewed assumptions meet baseline provenance standards."
 
         return Finding(
             agent=self.name,
@@ -361,9 +452,9 @@ class SkepticAgent(BaseAgent):
             assumptions=[],
             evidence=[
                 Evidence(
-                    source_type="calculation",
-                    source_ref="skeptic_audit_log",
-                    snippet=f"Downgraded confidence on {len(challenged_assumptions)} speculative assumption(s)."
+                    source_type="external",
+                    source_ref="b2b_saas_freemium_conversion",
+                    snippet=f"Grounded freemium benchmark midpoint is {grounded_threshold*100:.2f}%. Challenged {len(challenges)} optimistic estimate(s)."
                 )
             ],
             confidence=0.90,

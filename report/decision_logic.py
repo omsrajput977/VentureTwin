@@ -17,19 +17,31 @@ class ConfidenceAssessment(BaseModel):
     score: float
     reasons: List[str]
 
+def get_min_runway(decision: Optional[Any] = None, company_data: Optional[Dict[str, Any]] = None) -> float:
+    """
+    Returns the effective minimum runway threshold.
+    Precedence: Decision.constraints -> Company financial target -> 10.0 default.
+    """
+    if decision and getattr(decision, "constraints", None):
+        if "min_runway_months" in decision.constraints:
+            return float(decision.constraints["min_runway_months"])
+    if company_data and "financials" in company_data:
+        fin = company_data["financials"]
+        if "target_min_runway_months" in fin:
+            return float(fin["target_min_runway_months"])
+    return 10.0
+
 def rank_strategies(
     sim_runs: List[SimulationRun],
     constraints: Optional[Dict[str, Any]] = None,
-    min_runway_default: float = 10.0
+    min_runway_default: float = 10.0,
+    company_data: Optional[Dict[str, Any]] = None
 ) -> List[RankedStrategy]:
-    """
-    Ranks strategies based on the 'expected' scenario.
-    A strategy is feasible iff runway_months_12 >= min_runway constraint.
-    Feasible strategies are ranked descending by net_contribution_12 (tie-break by runway_months_12).
-    """
     min_runway = min_runway_default
     if constraints and "min_runway_months" in constraints:
         min_runway = float(constraints["min_runway_months"])
+    elif company_data:
+        min_runway = get_min_runway(None, company_data)
 
     # Extract expected runs
     expected_runs = [r for r in sim_runs if r.scenario == "expected"]
@@ -143,3 +155,4 @@ def compute_confidence(
         level = "Low"
 
     return ConfidenceAssessment(level=level, score=round(final_score, 2), reasons=reasons)
+

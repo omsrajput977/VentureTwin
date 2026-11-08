@@ -67,3 +67,4 @@ async def test_event_bus_subscriptions():
     await bus.emit("agent_started", agent="cfo", payload={"id": "t1"})
 
     assert received == ["task_created", "agent_started"]
+

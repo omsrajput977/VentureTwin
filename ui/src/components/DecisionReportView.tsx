@@ -290,6 +290,27 @@ export const DecisionReportView: React.FC<Props> = ({ report, decisionId, onAppr
         </div>
       </div>
 
+      {/* 6. Execution Plan & Trigger Gates */}
+      {sec.execution_plan && sec.execution_plan.length > 0 && (
+        <div className="bg-slate-900/90 border border-slate-800 rounded-2xl p-6 shadow-xl">
+          <h3 className="text-lg font-bold text-white mb-1">Execution Gates & Rollout Phases</h3>
+          <p className="text-xs text-slate-400 mb-4">Milestone conditions derived from sensitivity flip points and cash runway safety floor</p>
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+            {sec.execution_plan.map((phase: any, idx: number) => (
+              <div key={idx} className="p-4 bg-slate-950/60 rounded-xl border border-slate-800 space-y-2">
+                <div className="text-xs font-bold text-brand-400">{phase.phase}</div>
+                <div className="text-xs text-white">
+                  <span className="text-slate-400">Gate Condition:</span> <span className="font-mono text-emerald-400">{phase.gate}</span>
+                </div>
+                <div className="text-xs text-slate-300">
+                  <span className="text-slate-400">Action:</span> {phase.action}
+                </div>
+              </div>
+            ))}
+          </div>
+        </div>
+      )}
+
       {/* 7. Human-in-the-Loop Approval Gate */}
       <div className="bg-slate-900/90 border border-slate-800 rounded-2xl p-6 shadow-xl">
         <h3 className="text-lg font-bold text-white mb-1">Human-in-the-Loop Sign-Off Gate</h3>
@@ -338,3 +359,4 @@ export const DecisionReportView: React.FC<Props> = ({ report, decisionId, onAppr
     </div>
   );
 };
+

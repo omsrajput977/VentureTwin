@@ -55,7 +55,6 @@ class BaseAgent:
 
         # Handle failure injection for resilience testing
         if injected_failure == "timeout":
-            await asyncio.sleep(self.timeout_seconds + 0.1)
             raise asyncio.TimeoutError(f"Agent {self.name} timed out due to injected failure")
         elif injected_failure == "exception":
             raise AgentExecutionError(f"Agent {self.name} crashed with injected exception")
@@ -90,3 +89,4 @@ class BaseAgent:
         and generate structured assumptions and recommendations.
         """
         raise NotImplementedError("Subclasses must implement _execute_core")
+

@@ -39,3 +39,4 @@ class EventBus:
 
     def clear(self) -> None:
         self.events.clear()
+

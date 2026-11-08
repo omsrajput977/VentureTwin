@@ -60,3 +60,4 @@ class AgentRegistry:
         return result
 
 default_registry = AgentRegistry()
+

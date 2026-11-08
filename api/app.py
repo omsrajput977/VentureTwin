@@ -23,9 +23,12 @@ app = FastAPI(
     version="0.1.0"
 )
 
+cors_origins_env = os.getenv("CORS_ORIGINS", "*")
+allowed_origins = [o.strip() for o in cors_origins_env.split(",") if o.strip()]
+
 app.add_middleware(
     CORSMiddleware,
-    allow_origins=["*"],
+    allow_origins=allowed_origins if allowed_origins else ["*"],
     allow_credentials=True,
     allow_methods=["*"],
     allow_headers=["*"],
@@ -50,6 +53,8 @@ class DecisionRequest(BaseModel):
 class FailureInjectionRequest(BaseModel):
     agent: str
     mode: Literal["timeout", "exception", "bad_output"]
+    persist: bool = False
+    fail_attempts: int = 3
 
 class ApprovalRequest(BaseModel):
     action: Literal["approve", "reject", "request_changes"]
@@ -183,11 +188,12 @@ async def inject_failure(decision_id: str, req: FailureInjectionRequest):
     if not supervisor:
         raise HTTPException(status_code=404, detail="Active supervisor not found for decision")
 
-    supervisor.inject_failure(req.agent, req.mode)
+    supervisor.inject_failure(req.agent, req.mode, persist=req.persist, fail_attempts=req.fail_attempts)
     return {
         "decision_id": decision_id,
         "agent": req.agent,
         "mode": req.mode,
+        "persist": req.persist,
         "status": "failure_injected"
     }
 
@@ -223,18 +229,43 @@ async def approve_decision(decision_id: str, req: ApprovalRequest):
     decision_records_store.append(record)
     return {"status": "recorded", "decision_record": record}
 
+def compute_calibration_summary(seeded_decisions: List[Dict[str, Any]]) -> Dict[str, Any]:
+    """Computes past decision calibration error and primary drift factor dynamically."""
+    if not seeded_decisions:
+        return {
+            "total_evaluated_past_decisions": 0,
+            "mean_arr_error_pct": 0.0,
+            "most_common_drift_factor": "none"
+        }
+    pct_errors = []
+    drift_reasons = []
+    for d in seeded_decisions:
+        cal = d.get("calibration_error", {})
+        for k, v in cal.items():
+            if "error_pct" in k and isinstance(v, (int, float)):
+                pct_errors.append(abs(float(v)))
+        if "most_wrong_assumption" in cal:
+            drift_reasons.append(cal["most_wrong_assumption"])
+
+    mean_err = round(sum(pct_errors) / len(pct_errors), 1) if pct_errors else 0.0
+    from collections import Counter
+    most_common = Counter(drift_reasons).most_common(1)[0][0] if drift_reasons else "none"
+
+    return {
+        "total_evaluated_past_decisions": len(seeded_decisions),
+        "mean_arr_error_pct": mean_err,
+        "most_common_drift_factor": most_common
+    }
+
 @app.get("/api/history")
 async def get_history():
     """Returns seeded past decisions with calibration error plus new approved decisions."""
     seeded = load_seeded_decisions()
+    summary = compute_calibration_summary(seeded)
     return {
         "seeded_decisions": seeded,
         "live_approved_decisions": decision_records_store,
-        "calibration_summary": {
-            "total_evaluated_past_decisions": len(seeded),
-            "mean_arr_error_pct": 9.4,
-            "most_common_drift_factor": "conversion_takeup_rate"
-        }
+        "calibration_summary": summary
     }
 
 @app.get("/api/graph")

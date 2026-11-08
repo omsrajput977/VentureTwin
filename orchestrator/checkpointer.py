@@ -67,3 +67,4 @@ class SQLiteCheckpointer:
             else:
                 conn.execute("DELETE FROM checkpoints")
             conn.commit()
+

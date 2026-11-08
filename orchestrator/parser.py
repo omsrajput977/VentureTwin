@@ -3,7 +3,7 @@ import uuid
 from typing import Tuple, Dict, Any
 from state.schemas import Decision
 
-SUPPORTED_TYPES = ["free_plan", "price_change"]
+SUPPORTED_TYPES = ["free_plan"]
 
 def parse_decision_query(query: str, constraints: Dict[str, Any] = None) -> Decision:
     q_lower = query.lower().strip()
@@ -20,26 +20,26 @@ def parse_decision_query(query: str, constraints: Dict[str, Any] = None) -> Deci
             constraints=effective_constraints
         )
 
-    # Price change matching (Stretch support)
+    # Price change matching (Demarcated as planned for v0.2)
     if any(k in q_lower for k in ["raise price", "increase price", "cut price", "lower price", "pricing change", "price change"]):
         return Decision(
             id=dec_id,
-            type="price_change",
+            type="unsupported",
             question=query,
-            objective="Evaluate elasticity of demand, expansion MRR, and churn impact of adjusting tier prices.",
+            objective="VentureTwin v0.1 MVP specializes in Freemium / Free Plan packaging decisions. Price change elasticity modeling is planned for v0.2 roadmap.",
             constraints=effective_constraints
         )
 
-    # Unsupported query
+    # Generic unsupported query
     return Decision(
         id=dec_id,
         type="unsupported",
         question=query,
         objective=(
-            "Unsupported decision type. VentureTwin currently supports:\n"
-            "1. 'free_plan' (e.g., 'Should we launch a free plan?')\n"
-            "2. 'price_change' (e.g., 'What if we raise prices by 15%?')\n"
-            "Please select or enter a pricing or packaging question."
+            "Unsupported decision type. VentureTwin v0.1 MVP specializes in 'free_plan' freemium packaging decisions "
+            "(e.g., 'Should we launch a free plan?' or 'Should we introduce usage caps on free tier?'). "
+            "Price change elasticity modeling is planned for v0.2 roadmap."
         ),
         constraints=effective_constraints
     )
+

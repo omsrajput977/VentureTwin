@@ -26,6 +26,7 @@ from simulation.engine import (
     run_sensitivity_analysis,
     find_flip_point
 )
+from simulation.reconcile import reconcile_assumptions, ReconciledParams
 from conflict.detector import detect_all_conflicts
 from conflict.resolver import resolve_conflict_via_simulation
 from verification.verifier import run_all_verification_checks
@@ -53,9 +54,10 @@ class Supervisor:
         self.flip_point_info: Dict[str, Any] = {}
         self.mc_summary: Dict[str, Any] = {}
 
-    def inject_failure(self, agent_name: str, mode: str) -> None:
+    def inject_failure(self, agent_name: str, mode: str, persist: bool = False, fail_attempts: int = 3) -> None:
         """Inject a mid-run failure: 'timeout', 'exception', or 'bad_output'"""
-        self.injected_failures[agent_name.lower()] = mode
+        key = f"persistent_{mode}" if persist else mode
+        self.injected_failures[agent_name.lower()] = key
 
     async def execute_workflow(
         self,
@@ -165,7 +167,7 @@ class Supervisor:
                 if agent is not None and task.id not in [
                     "task_workflow_verification"
                 ]:
-                    context = {"findings": state.findings, "state": state}
+                    context = {"findings": state.findings, "state": state, "decision": state.decision}
                     finding = await agent.run(
                         task,
                         context=context,
@@ -203,20 +205,45 @@ class Supervisor:
                         payload={"task_id": task.id, "mode": "retry_ready"}
                     )
                 else:
+                    if task.kind == "core_analysis":
+                        logger.error(f"Core analysis task {task.id} failed terminally after {max_attempts} attempts.")
+                        state.mark_task_failed(task.id, str(e))
+                        state.status = "failed"
+                        raise RuntimeError(f"Core analysis task {task.id} failed terminally: {e}")
+
+                    # Non-core task: first invoke Backup Analyst
                     state.degraded_agents.append(agent_name)
                     await self.event_bus.emit(
                         "recovery_started",
                         agent=agent_name,
-                        payload={"task_id": task.id, "mode": "degraded_fallback"}
+                        payload={"task_id": task.id, "mode": "backup_analyst"}
                     )
-                    fallback_finding = self._generate_fallback_finding(task, agent_name)
-                    state.add_finding(fallback_finding)
-                    await self.event_bus.emit(
-                        "recovery_done",
-                        agent=agent_name,
-                        payload={"task_id": task.id, "mode": "degraded_completed"}
-                    )
-                    return fallback_finding
+                    try:
+                        from agents.backup_agent import BackupAnalyst
+                        backup = BackupAnalyst()
+                        backup_finding = await backup.run_backup(task, state, self.llm_client)
+                        state.add_finding(backup_finding)
+                        await self.event_bus.emit(
+                            "recovery_done",
+                            agent=agent_name,
+                            payload={"task_id": task.id, "mode": "backup_analyst_completed"}
+                        )
+                        return backup_finding
+                    except Exception as backup_err:
+                        logger.warning(f"Backup analyst failed for {task.id}: {backup_err}")
+                        await self.event_bus.emit(
+                            "recovery_started",
+                            agent=agent_name,
+                            payload={"task_id": task.id, "mode": "degraded_fallback"}
+                        )
+                        fallback_finding = self._generate_fallback_finding(task, agent_name)
+                        state.add_finding(fallback_finding)
+                        await self.event_bus.emit(
+                            "recovery_done",
+                            agent=agent_name,
+                            payload={"task_id": task.id, "mode": "degraded_completed"}
+                        )
+                        return fallback_finding
 
         return None
 
@@ -231,7 +258,7 @@ class Supervisor:
                     name=f"{agent_name}_fallback_estimate",
                     low=1.0, base=1.0, high=1.0,
                     unit="ratio",
-                    provenance="simulated_estimate",
+                    provenance="fallback_degraded",
                     confidence=0.30,
                     proposed_by=agent_name.upper(),
                     source_ref=None
@@ -240,15 +267,81 @@ class Supervisor:
             evidence=[],
             confidence=0.30,
             limitations=[f"Generated via fallback due to {agent_name} process failure."],
-            status="ok"
+            status="ok",
+            degraded=True,
+            degraded_reason=f"Unrecoverable failure on {task.id}"
         )
 
     async def _run_builtin_supervisor_task(self, task: Task, state: WorkflowState) -> Any:
         company_data = self.company_data or load_company_data()
 
+        # Step: Discussion & Rebuttal Node
+        if task.id == "task_agent_discussion":
+            rebuttals_logged = []
+            for chal in state.skeptic_challenges:
+                target_agent = chal.get("agent", "")
+                param = chal.get("assumption", "")
+                concern = chal.get("challenge", "")
+
+                prompt = (
+                    f"Agent: {target_agent}\n"
+                    f"Parameter Challenged: {param}\n"
+                    f"Skeptic Critique: {concern}\n"
+                    "Respond with a structured rebuttal: choose 'concede', 'defend', or 'compromise'. "
+                    "Provide updated parameter bounds if conceding or compromising."
+                )
+
+                from agents.llm_client import llm_call
+                from state.schemas import Rebuttal, Message
+                rebuttal: Rebuttal = await llm_call(
+                    prompt=prompt,
+                    response_model=Rebuttal,
+                    system_prompt=f"You are {target_agent}. Provide a bounded professional defense or concession to the Skeptic.",
+                    client=self.llm_client
+                )
+
+                state.rebuttals.append(rebuttal)
+                msg = Message(
+                    from_agent=target_agent,
+                    to_agent="Skeptic",
+                    round=1,
+                    content=f"[{rebuttal.stance.upper()}] {rebuttal.rationale}"
+                )
+                state.discussion_messages.append(msg)
+                await self.event_bus.emit(
+                    "finding_posted",
+                    agent=target_agent,
+                    payload={"type": "rebuttal", "rebuttal": rebuttal.model_dump()}
+                )
+
+                if rebuttal.stance in ["concede", "compromise"] and rebuttal.updated_base is not None:
+                    for f in state.findings:
+                        if f.agent.lower() == target_agent.lower():
+                            for a in f.assumptions:
+                                if a.name == param:
+                                    a.base = rebuttal.updated_base
+                                    if rebuttal.updated_low is not None:
+                                        a.low = rebuttal.updated_low
+                                    if rebuttal.updated_high is not None:
+                                        a.high = rebuttal.updated_high
+                    for a in state.assumptions:
+                        if a.proposed_by.lower() == target_agent.lower() and a.name == param:
+                            a.base = rebuttal.updated_base
+                            if rebuttal.updated_low is not None:
+                                a.low = rebuttal.updated_low
+                            if rebuttal.updated_high is not None:
+                                a.high = rebuttal.updated_high
+
+                rebuttals_logged.append(rebuttal)
+
+            return {"status": "discussion_completed", "rebuttals_count": len(rebuttals_logged)}
+
         # Step 7: Conflict Resolution
-        if task.id == "task_conflict_resolution":
+        elif task.id == "task_conflict_resolution":
             raw_conflicts = detect_all_conflicts(state.findings)
+            reconciled = reconcile_assumptions(state.assumptions)
+            baseline_params = reconciled.expected_params
+
             resolved_conflicts = []
             for c in raw_conflicts:
                 await self.event_bus.emit(
@@ -256,20 +349,33 @@ class Supervisor:
                     agent="supervisor",
                     payload={"conflict_id": c.id, "type": c.type, "disputed_item": c.disputed_item}
                 )
-                res = resolve_conflict_via_simulation(c, state.findings, company_data=company_data)
+                res = resolve_conflict_via_simulation(
+                    c,
+                    state.findings,
+                    company_data=company_data,
+                    baseline_params=baseline_params
+                )
                 resolved_conflicts.append(res)
             state.conflicts = resolved_conflicts
             return {"status": "resolved", "conflicts_count": len(resolved_conflicts)}
 
         # Step 6: Simulation Engine
         elif task.id == "task_simulation_engine":
+            reconciled = reconcile_assumptions(state.assumptions)
             strategies = ["A_limited_features", "B_usage_caps", "C_no_free_plan"]
-            scenarios = ["conservative", "expected", "optimistic", "stress_infra"]
+            scenarios = [
+                "conservative",
+                "expected",
+                "optimistic",
+                "stress_infra_doubles",
+                "stress_conversion_collapse",
+                "stress_large_customer_churn"
+            ]
 
             sim_runs = []
             for strat in strategies:
                 for scen in scenarios:
-                    r = simulate(strat, scen, state.assumptions, company_data=company_data)
+                    r = simulate(strat, scen, reconciled, company_data=company_data)
                     sim_runs.append(r)
                     await self.event_bus.emit(
                         "simulation_run",
@@ -280,44 +386,65 @@ class Supervisor:
             state.simulation_runs = sim_runs
 
             # Compute sensitivity, Monte Carlo, and flip point
-            self.tornado_data = run_sensitivity_analysis("B_usage_caps", state.assumptions, company_data)
+            self.tornado_data = run_sensitivity_analysis("B_usage_caps", reconciled, company_data)
             self.flip_point_info = find_flip_point(
-                "B_usage_caps", "C_no_free_plan", "free_to_paid_conversion", state.assumptions, company_data
+                "B_usage_caps", "C_no_free_plan", "free_to_paid_conversion", reconciled, company_data
             )
-            self.mc_summary = run_monte_carlo("B_usage_caps", state.assumptions, company_data, n_samples=200)
+            self.mc_summary = run_monte_carlo("B_usage_caps", reconciled, company_data, n_samples=300)
 
             return {"status": "simulated", "runs_count": len(sim_runs)}
 
         # Step 9: Verification Layer
         elif task.id == "task_workflow_verification":
-            # If report is not yet built, build tentative report for validation
-            tentative_report = build_consolidated_report(
-                decision=state.decision,
-                sim_runs=state.simulation_runs,
-                assumptions=state.assumptions,
-                conflicts=state.conflicts,
-                verification_results=[],
-                tornado_data=self.tornado_data,
-                flip_point_info=self.flip_point_info,
-                mc_summary=self.mc_summary,
-                degraded_agents=state.degraded_agents,
-                company_data=company_data
-            )
+            loopback_rounds = 0
+            all_passed = False
+            results = []
 
-            results = run_all_verification_checks(
-                report=tentative_report,
-                sim_runs=state.simulation_runs,
-                assumptions=state.assumptions,
-                company_data=company_data
-            )
-            state.verification_results = results
+            while loopback_rounds <= 2:
+                tentative_report = build_consolidated_report(
+                    decision=state.decision,
+                    sim_runs=state.simulation_runs,
+                    assumptions=state.assumptions,
+                    conflicts=state.conflicts,
+                    verification_results=[],
+                    tornado_data=self.tornado_data,
+                    flip_point_info=self.flip_point_info,
+                    mc_summary=self.mc_summary,
+                    degraded_agents=state.degraded_agents,
+                    company_data=company_data
+                )
 
-            all_passed = all(r.status == "passed" for r in results)
+                results = run_all_verification_checks(
+                    report=tentative_report,
+                    sim_runs=state.simulation_runs,
+                    assumptions=state.assumptions,
+                    company_data=company_data
+                )
+                state.verification_results = results
+
+                all_passed = all(r.status == "passed" for r in results)
+                if all_passed or loopback_rounds == 2:
+                    break
+
+                loopback_rounds += 1
+                state.round = min(state.max_rounds, state.round + 1)
+                await self.event_bus.emit(
+                    "recovery_started",
+                    agent="supervisor",
+                    payload={"mode": "verification_loopback", "round": loopback_rounds}
+                )
+                reconciled = reconcile_assumptions(state.assumptions)
+                await self.event_bus.emit(
+                    "recovery_done",
+                    agent="supervisor",
+                    payload={"mode": "verification_loopback_completed", "round": loopback_rounds}
+                )
+
             evt_type = "verification_passed" if all_passed else "verification_failed"
             await self.event_bus.emit(
                 evt_type,
                 agent="skeptic",
-                payload={"all_passed": all_passed, "results": [r.model_dump() for r in results]}
+                payload={"all_passed": all_passed, "results": [r.model_dump() for r in results], "loopback_rounds": loopback_rounds}
             )
             return {"status": "verified", "passed": all_passed}
 
@@ -335,6 +462,11 @@ class Supervisor:
                 degraded_agents=state.degraded_agents,
                 company_data=company_data
             )
+            if not all(r.status == "passed" for r in state.verification_results):
+                final_report.confidence = "Low"
+                final_report.disclaimers.append("Verification Alert: One or more automated data tie-out checks failed.")
+
+            state.report = final_report
             state.report = final_report
             await self.event_bus.emit(
                 "report_ready",

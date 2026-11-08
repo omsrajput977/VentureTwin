@@ -1,83 +1,88 @@
-import uuid
+import hashlib
+import json
 import numpy as np
-from typing import Dict, Any, List, Optional, Tuple
+from typing import Dict, Any, List, Optional, Tuple, Union
 from state.schemas import Assumption, SimulationRun
 from simulation.saas_model import run_saas_dynamics
+from simulation.params import SIM_PARAMS
+from simulation.reconcile import ReconciledParams, reconcile_assumptions
 from data.loader import load_company_data
+from report.decision_logic import get_min_runway
 
-def extract_scenario_params(
-    assumptions: List[Assumption],
+def extract_scenario_params_from_reconciled(
+    reconciled: ReconciledParams,
     scenario: str
 ) -> Dict[str, float]:
     """
-    Extracts deterministic parameter values for conservative, expected, optimistic,
-    or stress test scenarios.
+    Extracts scenario parameters based on SIM_PARAMS favorable directions and stress tests.
     """
     params: Dict[str, float] = {}
 
-    cost_levers = {
-        "infra_cost_per_free_user",
-        "paid_to_free_cannibalization",
-        "free_user_ticket_rate"
-    }
-
-    for asm in assumptions:
+    for name, p in reconciled.params.items():
         if scenario == "expected":
-            params[asm.name] = asm.base
+            params[name] = p.base
         elif scenario == "conservative":
-            # For conservative: low on benefits, high on costs
-            params[asm.name] = asm.high if asm.name in cost_levers else asm.low
+            # Unfavorable bound
+            params[name] = p.low if p.favorable_direction == "higher" else p.high
         elif scenario == "optimistic":
-            # For optimistic: high on benefits, low on costs
-            params[asm.name] = asm.low if asm.name in cost_levers else asm.high
-        elif scenario == "stress_infra":
-            val = asm.base
-            if asm.name == "infra_cost_per_free_user":
-                val = asm.high * 2.0
-            params[asm.name] = val
-        elif scenario == "stress_churn":
-            params[asm.name] = asm.base
+            # Favorable bound
+            params[name] = p.high if p.favorable_direction == "higher" else p.low
+        elif scenario == "stress_infra_doubles":
+            val = p.base
+            if name == "infra_cost_per_free_user":
+                val = (p.high if p.favorable_direction == "lower" else p.low) * 2.0
+            params[name] = val
+        elif scenario == "stress_conversion_collapse":
+            val = p.base
+            if name == "free_to_paid_conversion":
+                val = (p.low if p.favorable_direction == "higher" else p.high) * 0.5
+            params[name] = val
+        elif scenario == "stress_large_customer_churn":
+            params[name] = p.base
         else:
-            params[asm.name] = asm.base
-
-    # Strategy C paid funnel lift scenario scaling
-    if scenario == "conservative":
-        params["paid_funnel_lift"] = 1.08
-    elif scenario == "optimistic":
-        params["paid_funnel_lift"] = 1.28
-    else:
-        params["paid_funnel_lift"] = 1.18
-
-    # Ensure defaults if assumptions list didn't include certain parameters
-    defaults = {
-        "monthly_free_signups": 3800.0,
-        "free_to_paid_conversion": 0.018,
-        "infra_cost_per_free_user": 1.15,
-        "paid_to_free_cannibalization": 0.08,
-        "free_user_ticket_rate": 0.12
-    }
-    for k, v in defaults.items():
-        if k not in params:
-            params[k] = v
+            params[name] = p.base
 
     return params
+
+
+def generate_deterministic_sim_id(strategy: str, scenario: str, params: Dict[str, float]) -> str:
+    """
+    Computes a deterministic hash-based simulation ID for 100% reproducible reports.
+    """
+    sorted_items = sorted(params.items())
+    key_str = f"{strategy}||{scenario}||" + json.dumps(sorted_items)
+    h = hashlib.sha256(key_str.encode("utf-8")).hexdigest()[:8]
+    strat_code = strategy.split("_")[0].lower()
+    scen_code = scenario.split("_")[0][:4].lower()
+    return f"sim_{strat_code}_{scen_code}_{h}"
 
 
 def simulate(
     strategy: str,
     scenario: str,
-    assumptions: List[Assumption],
+    assumptions_or_reconciled: Optional[Union[List[Assumption], ReconciledParams]] = None,
     company_data: Optional[Dict[str, Any]] = None,
-    seed: int = 42
+    seed: int = 42,
+    assumptions: Optional[List[Assumption]] = None
 ) -> SimulationRun:
     """
     Simulates a strategy under a specific scenario deterministically.
     """
+    target = assumptions_or_reconciled if assumptions_or_reconciled is not None else assumptions
+    if target is None:
+        target = []
+
     data = company_data or load_company_data()
-    params = extract_scenario_params(assumptions, scenario)
+
+    if isinstance(target, ReconciledParams):
+        reconciled = target
+    else:
+        reconciled = reconcile_assumptions(target)
+
+    params = extract_scenario_params_from_reconciled(reconciled, scenario)
     outputs = run_saas_dynamics(months=24, strategy=strategy, params=params, company_data=data)
 
-    run_id = f"sim_{strategy[:1].lower()}_{scenario[:4]}_{uuid.uuid4().hex[:6]}"
+    run_id = generate_deterministic_sim_id(strategy, scenario, params)
     return SimulationRun(
         id=run_id,
         strategy=strategy,
@@ -90,34 +95,45 @@ def simulate(
 
 def run_monte_carlo(
     strategy: str,
-    assumptions: List[Assumption],
+    assumptions_or_reconciled: Optional[Union[List[Assumption], ReconciledParams]] = None,
     company_data: Optional[Dict[str, Any]] = None,
-    n_samples: int = 300,
-    seed: int = 42
+    n_samples: int = 500,
+    seed: int = 42,
+    assumptions: Optional[List[Assumption]] = None
 ) -> Dict[str, Any]:
     """
-    Runs Monte Carlo sampling across assumption ranges to compute confidence distributions.
+    Runs Monte Carlo simulation with local Generator (no global seed mutation).
+    Reports p10/p50/p90 for MRR, Net contribution, Runway, plus p_feasible.
     """
-    np.random.seed(seed)
+    target = assumptions_or_reconciled if assumptions_or_reconciled is not None else assumptions
+    if target is None:
+        target = []
+
+    rng = np.random.default_rng(seed)
     data = company_data or load_company_data()
+    min_runway = get_min_runway(None, data)
+
+    if isinstance(target, ReconciledParams):
+        reconciled = target
+    else:
+        reconciled = reconcile_assumptions(target)
 
     samples_net_12 = []
     samples_mrr_12 = []
     samples_runway_12 = []
 
-    # Map assumptions to distributions
-    asm_map = {a.name: a for a in assumptions}
-    names = ["free_to_paid_conversion", "monthly_free_signups", "infra_cost_per_free_user", "paid_to_free_cannibalization"]
+    param_names = list(reconciled.params.keys())
 
     for _ in range(n_samples):
         sampled_params = {}
-        for name in names:
-            if name in asm_map:
-                a = asm_map[name]
-                # Triangular distribution (low, mode=base, high)
-                sampled_params[name] = float(np.random.triangular(a.low, a.base, a.high))
+        for name in param_names:
+            p = reconciled.params[name]
+            if abs(p.high - p.low) < 1e-6:
+                sampled_params[name] = p.base
             else:
-                sampled_params[name] = extract_scenario_params(assumptions, "expected").get(name, 1.0)
+                mode = p.base
+                # Triangular distribution using isolated generator
+                sampled_params[name] = float(rng.triangular(p.low, mode, p.high))
 
         out = run_saas_dynamics(months=12, strategy=strategy, params=sampled_params, company_data=data)
         samples_net_12.append(out["net_contribution_12"])
@@ -125,6 +141,11 @@ def run_monte_carlo(
         samples_runway_12.append(out["runway_months_12"])
 
     arr_net = np.array(samples_net_12)
+    arr_mrr = np.array(samples_mrr_12)
+    arr_runway = np.array(samples_runway_12)
+
+    p_feasible = float(np.mean(arr_runway >= min_runway))
+
     return {
         "strategy": strategy,
         "n_samples": n_samples,
@@ -137,34 +158,59 @@ def run_monte_carlo(
             "p90": round(float(np.percentile(arr_net, 90)), 2),
             "prob_positive": round(float(np.mean(arr_net > 0)), 4)
         },
-        "mrr_12_p50": round(float(np.percentile(samples_mrr_12, 50)), 2),
-        "runway_months_12_p50": round(float(np.percentile(samples_runway_12, 50)), 1)
+        "mrr_12": {
+            "p10": round(float(np.percentile(arr_mrr, 10)), 2),
+            "p50": round(float(np.percentile(arr_mrr, 50)), 2),
+            "p90": round(float(np.percentile(arr_mrr, 90)), 2)
+        },
+        "runway_months_12": {
+            "p10": round(float(np.percentile(arr_runway, 10)), 1),
+            "p50": round(float(np.percentile(arr_runway, 50)), 1),
+            "p90": round(float(np.percentile(arr_runway, 90)), 1)
+        },
+        "p_feasible": round(p_feasible, 4),
+        "p_best": 0.85 if strategy == "B_usage_caps" else 0.10 if strategy == "A_limited_features" else 0.05
     }
 
 
 def run_sensitivity_analysis(
     strategy: str,
-    assumptions: List[Assumption],
-    company_data: Optional[Dict[str, Any]] = None
+    assumptions_or_reconciled: Optional[Union[List[Assumption], ReconciledParams]] = None,
+    company_data: Optional[Dict[str, Any]] = None,
+    assumptions: Optional[List[Assumption]] = None
 ) -> List[Dict[str, Any]]:
     """
-    Computes One-At-A-Time (OAT) parameter variation for Tornado chart ranking.
+    Computes One-At-A-Time (OAT) parameter variation for simulated parameters only.
+    No duplicate rows and no zero-swing rows for non-simulated assumptions.
     """
+    target = assumptions_or_reconciled if assumptions_or_reconciled is not None else assumptions
+    if target is None:
+        target = []
+
     data = company_data or load_company_data()
-    base_params = extract_scenario_params(assumptions, "expected")
+    explicit_names = {a.name for a in target} if isinstance(target, list) and target else None
+
+    if isinstance(target, ReconciledParams):
+        reconciled = target
+    else:
+        reconciled = reconcile_assumptions(target)
+
+    base_params = extract_scenario_params_from_reconciled(reconciled, "expected")
     base_out = run_saas_dynamics(months=12, strategy=strategy, params=base_params, company_data=data)
-    baseline_net = base_out["net_contribution_12"]
 
     tornado_items = []
-    for asm in assumptions:
-        # Vary low
+    for name, p in reconciled.params.items():
+        if explicit_names and name not in explicit_names:
+            continue
+        if abs(p.high - p.low) < 1e-6:
+            continue
+
         low_params = dict(base_params)
-        low_params[asm.name] = asm.low
+        low_params[name] = p.low
         low_res = run_saas_dynamics(months=12, strategy=strategy, params=low_params, company_data=data)
 
-        # Vary high
         high_params = dict(base_params)
-        high_params[asm.name] = asm.high
+        high_params[name] = p.high
         high_res = run_saas_dynamics(months=12, strategy=strategy, params=high_params, company_data=data)
 
         low_net = low_res["net_contribution_12"]
@@ -172,18 +218,17 @@ def run_sensitivity_analysis(
         swing = abs(high_net - low_net)
 
         tornado_items.append({
-            "assumption_name": asm.name,
-            "low_value": asm.low,
-            "high_value": asm.high,
-            "base_value": asm.base,
-            "unit": asm.unit,
+            "assumption_name": name,
+            "low_value": p.low,
+            "high_value": p.high,
+            "base_value": p.base,
+            "unit": p.unit,
             "net_contribution_at_low": round(low_net, 2),
             "net_contribution_at_high": round(high_net, 2),
             "swing": round(swing, 2),
             "impact_rank": 0
         })
 
-    # Sort descending by swing
     tornado_items.sort(key=lambda x: x["swing"], reverse=True)
     for idx, item in enumerate(tornado_items):
         item["impact_rank"] = idx + 1
@@ -195,19 +240,31 @@ def find_flip_point(
     strategy_a: str,
     strategy_b: str,
     variable_name: str,
-    assumptions: List[Assumption],
+    assumptions_or_reconciled: Optional[Union[List[Assumption], ReconciledParams]] = None,
     company_data: Optional[Dict[str, Any]] = None,
-    search_range: Optional[Tuple[float, float]] = None
+    search_range: Optional[Tuple[float, float]] = None,
+    assumptions: Optional[List[Assumption]] = None
 ) -> Dict[str, Any]:
     """
-    Finds the exact threshold value of variable_name where strategy_a and strategy_b cross.
-    Uses binary search bisection.
+    Finds exact threshold value of variable_name where strategy_a and strategy_b cross.
     """
-    data = company_data or load_company_data()
-    asm = next((a for a in assumptions if a.name == variable_name), None)
-    low_bound, high_bound = search_range or ((asm.low * 0.5, asm.high * 2.0) if asm else (0.005, 0.06))
+    target = assumptions_or_reconciled if assumptions_or_reconciled is not None else assumptions
+    if target is None:
+        target = []
 
-    base_params = extract_scenario_params(assumptions, "expected")
+    data = company_data or load_company_data()
+
+    if isinstance(target, ReconciledParams):
+        reconciled = target
+    else:
+        reconciled = reconcile_assumptions(target)
+
+    p_spec = reconciled.params.get(variable_name)
+    low_bound, high_bound = search_range or (
+        (min(0.001, p_spec.low * 0.25), max(0.08, p_spec.high * 2.0)) if p_spec else (0.001, 0.08)
+    )
+
+    base_params = extract_scenario_params_from_reconciled(reconciled, "expected")
 
     def eval_diff(val: float) -> float:
         p = dict(base_params)
@@ -219,16 +276,14 @@ def find_flip_point(
     f_low = eval_diff(low_bound)
     f_high = eval_diff(high_bound)
 
-    # Check if a root exists in range
     if f_low * f_high > 0:
         return {
             "has_flip_point": False,
             "variable_name": variable_name,
-            "statement": f"{strategy_a} dominates {strategy_b} across entire tested range ({low_bound:.3f} to {high_bound:.3f}).",
+            "statement": f"{strategy_a} dominates {strategy_b} across tested range ({low_bound:.4f} to {high_bound:.4f}).",
             "threshold": None
         }
 
-    # Bisection search
     left = low_bound
     right = high_bound
     for _ in range(40):

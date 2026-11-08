@@ -49,6 +49,12 @@ export interface EventItem {
 
 export const API_BASE = '/api';
 
+export async function fetchHealth() {
+  const res = await fetch(`${API_BASE}/health`);
+  if (!res.ok) throw new Error('Failed to fetch health');
+  return res.json();
+}
+
 export async function fetchCompany(): Promise<CompanySnapshot> {
   const res = await fetch(`${API_BASE}/company`);
   if (!res.ok) throw new Error('Failed to fetch company snapshot');
@@ -108,3 +114,4 @@ export async function fetchCompanyGraph() {
   if (!res.ok) throw new Error('Failed to fetch graph');
   return res.json();
 }
+

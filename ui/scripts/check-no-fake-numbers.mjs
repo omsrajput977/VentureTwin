@@ -32,6 +32,17 @@ function checkDirectory(dir) {
           hasErrors = true;
         }
       }
+
+      if (content.includes('Math.random()')) {
+        console.error(`[ERROR] Forbidden Math.random() found in ${fullPath}`);
+        hasErrors = true;
+      }
+
+      const fallbackMatch = content.match(/\|\|\s*([1-9]\d{2,})/);
+      if (fallbackMatch) {
+        console.error(`[ERROR] Forbidden numeric fallback "${fallbackMatch[0]}" found in ${fullPath}`);
+        hasErrors = true;
+      }
     }
   }
   return hasErrors;

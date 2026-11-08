@@ -50,3 +50,4 @@ export const EventFeed: React.FC<Props> = ({ events }) => {
     </div>
   );
 };
+

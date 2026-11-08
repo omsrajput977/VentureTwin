@@ -5,6 +5,29 @@ from typing import Dict, Any, List, Optional
 DATA_DIR = Path(__file__).resolve().parent
 SYNTHETIC_COMPANY_PATH = DATA_DIR / "synthetic_company.json"
 SEEDED_DECISIONS_PATH = DATA_DIR / "seeded_decisions.json"
+BENCHMARKS_PATH = DATA_DIR / "benchmarks.json"
+MODEL_CONFIG_PATH = DATA_DIR / "model_config.json"
+
+def load_model_config(file_path: Optional[Path] = None) -> Dict[str, Any]:
+    path = file_path or MODEL_CONFIG_PATH
+    if not path.exists():
+        return {
+            "baseline_activation_rate": 0.35,
+            "free_user_monthly_churn": 0.12,
+            "monthly_support_cost_per_fte": 7000.0,
+            "tickets_per_fte_monthly": 300,
+            "paid_tickets_per_customer_monthly": 1.83,
+            "illustrative": True
+        }
+    with open(path, "r", encoding="utf-8") as f:
+        return json.load(f)
+
+def load_benchmarks(file_path: Optional[Path] = None) -> List[Dict[str, Any]]:
+    path = file_path or BENCHMARKS_PATH
+    if not path.exists():
+        return []
+    with open(path, "r", encoding="utf-8") as f:
+        return json.load(f)
 
 def load_company_data(file_path: Optional[Path] = None) -> Dict[str, Any]:
     path = file_path or SYNTHETIC_COMPANY_PATH
@@ -42,3 +65,4 @@ def load_seeded_decisions(file_path: Optional[Path] = None) -> List[Dict[str, An
     path = file_path or SEEDED_DECISIONS_PATH
     with open(path, "r", encoding="utf-8") as f:
         return json.load(f)
+

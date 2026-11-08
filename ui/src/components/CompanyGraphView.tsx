@@ -59,3 +59,4 @@ export const CompanyGraphView: React.FC = () => {
     </div>
   );
 };
+

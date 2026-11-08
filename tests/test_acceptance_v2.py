@@ -56,3 +56,4 @@ def test_resolver_proceed_vs_reject_has_computed_justification():
     assert resolved.resolution is not None
     assert "$" in resolved.resolution
     assert len(resolved.simulation_ids) == 2
+

@@ -121,3 +121,4 @@ export const ExecutionGraph: React.FC<Props> = ({ tasks, findings, onSelectFindi
     </div>
   );
 };
+

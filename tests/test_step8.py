@@ -58,3 +58,4 @@ async def test_failure_injection_bad_output_recovery(tmp_path):
     events = [e.type for e in bus.get_events()]
     assert "agent_failed" in events
     assert "recovery_done" in events
+

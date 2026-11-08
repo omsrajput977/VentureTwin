@@ -1,6 +1,7 @@
 import math
-from typing import Dict, Any, List
+from typing import Dict, Any, List, Optional
 from pydantic import BaseModel
+from data.loader import load_model_config
 
 class MonthlyMetric(BaseModel):
     month: int
@@ -18,12 +19,17 @@ def run_saas_dynamics(
     months: int,
     strategy: str,
     params: Dict[str, float],
-    company_data: Dict[str, Any]
+    company_data: Dict[str, Any],
+    model_config: Optional[Dict[str, Any]] = None
 ) -> Dict[str, Any]:
     """
     Deterministic monthly simulation model over 12-24 months.
     Accurately models the cohort conversion economics and operational costs.
+    Externalized constants loaded from model_config.
     """
+    if model_config is None:
+        model_config = load_model_config()
+
     fin = company_data["financials"]
     cust = company_data["customers"]
     unit = company_data["unit_economics"]
@@ -43,32 +49,52 @@ def run_saas_dynamics(
     arpu = unit.get("arpu", 168.50)
     baseline_trial_paid = float(funnel["new_paid_customers_monthly"])
 
-    # Strategy levers
+    # Externalized model dynamics constants
+    baseline_activation_rate = float(model_config.get("baseline_activation_rate", 0.35))
+    free_churn = float(model_config.get("free_user_monthly_churn", 0.12))
+    support_cost_per_fte = float(model_config.get("monthly_support_cost_per_fte", 7000.0))
+    tickets_per_fte = float(model_config.get("tickets_per_fte_monthly", 300.0))
+    paid_tickets_per_cust = float(model_config.get("paid_tickets_per_customer_monthly", 1.83))
+
+    # Strategy levers from calibrated parameters
     free_signups_mo = params.get("monthly_free_signups", 3800.0)
-    conversion_rate = params.get("free_to_paid_conversion", 0.022)
+    conversion_rate = params.get("free_to_paid_conversion", 0.02)
     cannibalization_rate = params.get("paid_to_free_cannibalization", 0.08)
     cost_per_free = params.get("infra_cost_per_free_user", 1.15)
     free_ticket_rate = params.get("free_user_ticket_rate", 0.02)
-    activation_rate = 0.35  # fraction of signups who become active users
     churn_rate = base_churn
+    activation_rate = baseline_activation_rate
+    effective_signups = free_signups_mo
 
     if strategy == "C_no_free_plan":
         # Strategy C: No free tier, but conversion optimization lift on existing funnel
         free_signups_mo = 0.0
+        effective_signups = 0.0
         conversion_rate = 0.0
         cannibalization_rate = 0.0
         cost_per_free = 0.0
         free_ticket_rate = 0.0
         paid_acquisition_lift = params.get("paid_funnel_lift", 1.18)
     elif strategy == "B_usage_caps":
-        # Usage caps reduce infrastructure load, limit support, and accelerate conversion
-        cost_per_free = max(0.40, cost_per_free * 0.65)
-        cannibalization_rate = max(0.02, cannibalization_rate * 0.40)
-        free_ticket_rate = max(0.005, free_ticket_rate * 0.50)
-        conversion_rate = conversion_rate * 1.15
+        # Strategy B trade-off:
+        # Pros: lowers infra costs, lowers cannibalization, increases upgrade urgency
+        # Cons: gating friction reduces top-of-funnel activation volume
+        usage_cap_infra_red = params.get("usage_cap_infra_reduction", 0.35)
+        usage_cap_cann_red = params.get("usage_cap_cannibalization_reduction", 0.50)
+        cap_conv_uplift = params.get("cap_conversion_uplift", 0.15)
+        act_drop = params.get("activation_drop_from_gating", 0.10)
+
+        cost_per_free = max(0.10, cost_per_free * (1.0 - usage_cap_infra_red))
+        cannibalization_rate = max(0.005, cannibalization_rate * (1.0 - usage_cap_cann_red))
+        free_ticket_rate = max(0.002, free_ticket_rate * 0.50)
+        conversion_rate = conversion_rate * (1.0 + cap_conv_uplift)
+        effective_signups = free_signups_mo * max(0.05, 1.0 - act_drop)
+        activation_rate = baseline_activation_rate * max(0.05, 1.0 - act_drop)
         paid_acquisition_lift = 1.0
     else:  # Strategy A: Limited features
         paid_acquisition_lift = 1.0
+        effective_signups = free_signups_mo
+        activation_rate = baseline_activation_rate
 
     monthly_history: List[MonthlyMetric] = []
     cumulative_net_contribution = 0.0
@@ -92,12 +118,11 @@ def run_saas_dynamics(
             continue
 
         # 1. User base dynamics
-        free_churn = 0.12  # monthly active free user churn
-        new_active_free = free_signups_mo * activation_rate
+        new_active_free = effective_signups * baseline_activation_rate
         active_free = int(active_free * (1.0 - free_churn) + new_active_free)
 
         # Conversions from free signups cohort
-        converted_paid = free_signups_mo * conversion_rate
+        converted_paid = effective_signups * conversion_rate
         
         # Cannibalization of baseline paid conversions
         cannibalized = effective_baseline_paid * cannibalization_rate
@@ -114,16 +139,16 @@ def run_saas_dynamics(
 
         # Support load
         free_tickets = active_free * free_ticket_rate
-        paid_tickets = paying * (supp["monthly_tickets"] / max(1, cust["total_paying"]))
+        paid_tickets = paying * paid_tickets_per_cust
         total_tickets = paid_tickets + free_tickets
-        required_fte = math.ceil(total_tickets / 300.0)
-        support_cost = required_fte * 7000.0
+        required_fte = math.ceil(total_tickets / tickets_per_fte)
+        support_cost = required_fte * support_cost_per_fte
 
         gross_profit = mrr - total_infra - support_cost
         gross_margin = max(0.0, min(1.0, gross_profit / max(1.0, mrr)))
 
         # Incremental gross contribution compared to baseline month
-        baseline_gp = base_mrr - base_infra - (supp["headcount_fte"] * 7000.0)
+        baseline_gp = base_mrr - base_infra - (supp["headcount_fte"] * support_cost_per_fte)
         diff_gp = gross_profit - baseline_gp
         cumulative_net_contribution += diff_gp
 
@@ -166,7 +191,7 @@ def run_saas_dynamics(
         "net_contribution_24": m24.net_contribution,
         "runway_months_12": m12.runway_months,
         "gross_margin_12": m12.gross_margin,
-        "support_headcount_12": math.ceil((m12.active_free_users * free_ticket_rate + m12.paying_customers * 1.83) / 300.0),
+        "support_headcount_12": math.ceil((m12.active_free_users * free_ticket_rate + m12.paying_customers * paid_tickets_per_cust) / tickets_per_fte),
         "infra_cost_12": m12.infra_cost,
         "paying_customers_12": m12.paying_customers,
         "free_users_12": m12.active_free_users,

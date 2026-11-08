@@ -46,3 +46,4 @@ async def test_full_workflow_and_report_generation(tmp_path):
     verifs = sections["verification_summary"]
     assert len(verifs) >= 4
     assert any(v["check_name"] == "report_traceability" for v in verifs)
+

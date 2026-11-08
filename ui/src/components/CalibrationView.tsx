@@ -41,17 +41,17 @@ export const CalibrationView: React.FC = () => {
         <div className="grid grid-cols-1 md:grid-cols-3 gap-4 pt-4">
           <div className="p-4 bg-slate-950/60 rounded-xl border border-slate-800/80">
             <div className="text-xs text-slate-400">Total Evaluated Past Decisions</div>
-            <div className="text-2xl font-bold text-white mt-1">{summary.total_evaluated_past_decisions || 4}</div>
+            <div className="text-2xl font-bold text-white mt-1">{summary.total_evaluated_past_decisions ?? 0}</div>
             <div className="text-[11px] text-slate-500 mt-0.5">Benchmarked over 24 months</div>
           </div>
           <div className="p-4 bg-slate-950/60 rounded-xl border border-slate-800/80">
             <div className="text-xs text-slate-400">Mean Revenue Variance (MAPE)</div>
-            <div className="text-2xl font-bold text-brand-400 mt-1">{summary.mean_arr_error_pct || 9.4}%</div>
+            <div className="text-2xl font-bold text-brand-400 mt-1">{summary.mean_arr_error_pct ?? 0}%</div>
             <div className="text-[11px] text-slate-500 mt-0.5">Average prediction delta</div>
           </div>
           <div className="p-4 bg-slate-950/60 rounded-xl border border-slate-800/80">
             <div className="text-xs text-slate-400">Primary Variance Driver</div>
-            <div className="text-base font-bold text-amber-400 mt-1">{summary.most_common_drift_factor || 'conversion_takeup_rate'}</div>
+            <div className="text-base font-bold text-amber-400 mt-1">{summary.most_common_drift_factor || 'None'}</div>
             <div className="text-[11px] text-slate-500 mt-0.5">Most common assumption error</div>
           </div>
         </div>

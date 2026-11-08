@@ -105,3 +105,4 @@ def test_seeded_decisions_loader():
     assert len(decisions) >= 3
     assert all("calibration_error" in d for d in decisions)
     assert decisions[0]["id"] == "dec_2023_q3_annual_discount"
+

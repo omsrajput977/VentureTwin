@@ -176,6 +176,91 @@ def verify_required_sections(report: Optional[Report]) -> VerificationResult:
     )
 
 
+def verify_number_registry(report: Optional[Report]) -> VerificationResult:
+    if report is None:
+        return VerificationResult(
+            check_name="number_registry_integrity",
+            status="failed",
+            detail="Report is missing."
+        )
+
+    raw_reg = report.sections.get("number_registry", [])
+    if not raw_reg:
+        return VerificationResult(
+            check_name="number_registry_integrity",
+            status="failed",
+            detail="Number registry is missing or empty in report."
+        )
+
+    from report.number_registry import NumberRegistry
+    reg = NumberRegistry.from_dict(raw_reg)
+    failures = reg.verify_all()
+    if failures:
+        return VerificationResult(
+            check_name="number_registry_integrity",
+            status="failed",
+            detail=f"Discrepancy detected in {len(failures)} registered number(s): {failures[0]}"
+        )
+
+    return VerificationResult(
+        check_name="number_registry_integrity",
+        status="passed",
+        detail=f"All {len(reg.entries)} registered numbers tie out to simulation or snapshot origins."
+    )
+
+ALLOWED_INTEGER_CONSTANTS = {0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 24, 100}
+
+def verify_prose_numbers(report: Optional[Report]) -> VerificationResult:
+    if report is None:
+        return VerificationResult(
+            check_name="prose_number_audit",
+            status="failed",
+            detail="Report is missing."
+        )
+
+    raw_reg = report.sections.get("number_registry", [])
+    from report.number_registry import NumberRegistry
+    reg = NumberRegistry.from_dict(raw_reg)
+
+    prose_texts = []
+    exec_sum = report.sections.get("executive_summary")
+    if isinstance(exec_sum, str):
+        prose_texts.append(("executive_summary", exec_sum))
+
+    for item in report.sections.get("risks_and_triggers", []):
+        if isinstance(item, dict):
+            prose_texts.append(("risks_and_triggers", f"{item.get('risk', '')} {item.get('trigger', '')} {item.get('mitigation', '')}"))
+
+    num_pattern = re.compile(r"\$?\b([0-9]{1,3}(?:,[0-9]{3})*(?:\.[0-9]+)?|\d+(?:\.\d+)?)\b%?")
+
+    untraced = []
+    for section_name, text in prose_texts:
+        for match in num_pattern.finditer(text):
+            raw_str = match.group(1).replace(",", "")
+            try:
+                val = float(raw_str)
+            except ValueError:
+                continue
+
+            if int(val) == val and int(val) in ALLOWED_INTEGER_CONSTANTS:
+                continue
+
+            if not reg.lookup_number(val):
+                untraced.append(f"{match.group(0)} in {section_name}")
+
+    if untraced:
+        return VerificationResult(
+            check_name="prose_number_audit",
+            status="failed",
+            detail=f"Untraced numbers detected in narrative prose: {', '.join(untraced)}"
+        )
+
+    return VerificationResult(
+        check_name="prose_number_audit",
+        status="passed",
+        detail="All numbers in narrative prose tie directly to verified registry entries."
+    )
+
 def run_all_verification_checks(
     report: Optional[Report],
     sim_runs: List[SimulationRun],
@@ -188,6 +273,9 @@ def run_all_verification_checks(
         verify_company_financial_tie_outs(data),
         verify_provenance_integrity(assumptions, data),
         verify_required_sections(report),
-        verify_report_data_traceability(report, sim_runs, data)
+        verify_report_data_traceability(report, sim_runs, data),
+        verify_number_registry(report),
+        verify_prose_numbers(report)
     ]
     return results
+

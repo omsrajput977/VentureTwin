@@ -58,3 +58,23 @@ tests/test_step9.py ....
 
 ============================== 37 passed in 0.73s ==============================
 ```
+
+---
+
+## 10-Point Code Review Fixes Progress
+
+| Fix | Description | Status | Evidence |
+|---|---|---|---|
+| **Fix 1** | LLM Client, Mock Handler, Specialization & Real Cassettes | `Implemented` | `tests/test_fix1_llm.py` (3 passed), recording/replay supported |
+| **Fix 2** | Catalog, Provenance, Order-Independent Reconciliation | `Implemented` | `tests/test_fix2_reconcile.py` (3 passed), `reconcile_assumptions()` order-independent |
+| **Fix 3** | Strategy A vs B Trade-Off & Externalized Model Config | `Implemented` | `tests/test_fix3_tradeoff.py` (3 passed), external `data/model_config.json`, genuine tradeoff |
+| **Fix 4** | Ordinal Conflict Detection, Isolated Resolver & Discussion Node | `Implemented` | `tests/test_fix4_discussion.py` (5 passed), ordinal distance $\ge 2$, param isolation, discussion DAG node |
+| **Fix 5** | Task Kinds, Core Resilience, Backup Analyst & Instant Timeout | `Implemented` | `tests/test_fix5_recovery.py` (3 passed), core task stops workflow on terminal failure, Backup Analyst for specialists, instant timeout |
+| **Fix 6** | Number Registry, Prose Audit & Bounded Verification Loopback | `Implemented` | `tests/test_fix6_verification.py` (2 passed), `NumberRegistry` records all report values, prose audit regex scanner catches untraced numbers, bounded loopback in verification |
+| **Fix 7** | Elimination of Fabricated Claims, Sources & Skeptic Literals | `Implemented` | `tests/test_fix7_sources.py` (2 passed), all sources grounded in `synthetic_company.json` or `benchmarks.json`, Skeptic uses benchmark midpoint |
+| **Fix 8** | Report Completeness, Honest Approval, Server Calibration | `Implemented` | `tests/test_fix8_report_ui.py` (2 passed), dynamic calibration summary in `/api/history`, execution plan gates, UI banners and prebuild checks |
+| **Fix 9** | Honest Acceptance Suite V3, CI & Documentation Hygiene | `Implemented` | `tests/test_acceptance_v3.py` (12 passed), GitHub Actions CI `.github/workflows/ci.yml`, prompt docs moved to `docs/`, configurable CORS |
+| **Fix 10** | Price Change Scope Alignment | `Implemented` | `tests/test_fix10_scope.py` (2 passed), honest Freemium MVP specialization in parser/decomposer, UI chips updated, v0.2 roadmap documented |
+
+**Latest Suite Result:** `84 passed, 1 skipped in 1.87s` (UI build clean).
+

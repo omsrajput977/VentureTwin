@@ -1,6 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import {
   fetchCompany,
+  fetchHealth,
   submitDecision,
   fetchDecisionStatus,
   fetchDecisionReport,
@@ -21,6 +22,7 @@ import { CompanyGraphView } from './components/CompanyGraphView';
 export const App: React.FC = () => {
   const [activeTab, setActiveTab] = useState<'console' | 'report' | 'calibration' | 'graph'>('console');
   const [company, setCompany] = useState<CompanySnapshot | null>(null);
+  const [health, setHealth] = useState<{ llm_mode: string; provider: string; model: string } | null>(null);
   
   // Workflow state
   const [decisionQuery, setDecisionQuery] = useState('Should we launch a free plan?');
@@ -32,9 +34,10 @@ export const App: React.FC = () => {
   const [report, setReport] = useState<any>(null);
   const [selectedFinding, setSelectedFinding] = useState<FindingItem | null>(null);
 
-  // Load initial company snapshot
+  // Load initial company snapshot and health
   useEffect(() => {
     fetchCompany().then(setCompany).catch(console.error);
+    fetchHealth().then(setHealth).catch(console.error);
   }, []);
 
   // Poll workflow status when a decision is active
@@ -169,6 +172,35 @@ export const App: React.FC = () => {
 
       {/* Main Content Area */}
       <main className="flex-1 max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-6 w-full space-y-6">
+        {/* Mode & Health Banners */}
+        {health?.llm_mode === 'mock' && (
+          <div className="bg-amber-500/10 border border-amber-500/30 rounded-xl p-3 flex items-center justify-between text-xs text-amber-200">
+            <div className="flex items-center gap-2">
+              <span className="px-2 py-0.5 rounded bg-amber-500/20 text-amber-400 font-bold uppercase tracking-wider text-[10px]">
+                Deterministic Mock Mode
+              </span>
+              <span>
+                Agents invoke data-driven mock handlers computing structured assumptions from tool telemetry. No static string literals.
+              </span>
+            </div>
+            <span className="text-[11px] text-amber-400/80">LLM_MODE=mock</span>
+          </div>
+        )}
+
+        {workflowStatus === 'degraded' && (
+          <div className="bg-orange-500/10 border border-orange-500/30 rounded-xl p-3 flex items-center justify-between text-xs text-orange-200">
+            <div className="flex items-center gap-2">
+              <span className="px-2 py-0.5 rounded bg-orange-500/20 text-orange-400 font-bold uppercase tracking-wider text-[10px]">
+                Degraded Execution
+              </span>
+              <span>
+                One or more agent processes encountered unrecoverable runtime faults. Backup Analyst or fallback estimates applied.
+              </span>
+            </div>
+            <span className="text-[11px] text-orange-400/80">Workflow Degraded</span>
+          </div>
+        )}
+
         {/* Persistent Company Snapshot Card */}
         <CompanySnapshotCard snapshot={company} />
 
@@ -211,12 +243,12 @@ export const App: React.FC = () => {
                 </button>
                 <button
                   onClick={() => {
-                    setDecisionQuery('What if we raise Starter plan price by 15%?');
-                    handleLaunchDecision('What if we raise Starter plan price by 15%?');
+                    setDecisionQuery('Should we introduce usage caps on free tier?');
+                    handleLaunchDecision('Should we introduce usage caps on free tier?');
                   }}
                   className="px-2.5 py-1 bg-slate-800/80 hover:bg-slate-800 text-slate-300 rounded-lg text-[11px] transition"
                 >
-                  What if we raise Starter price by 15%?
+                  Should we introduce usage caps on free tier?
                 </button>
               </div>
             </div>
@@ -325,3 +357,4 @@ export const App: React.FC = () => {
     </div>
   );
 };
+

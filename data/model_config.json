@@ -1,0 +1,9 @@
+{
+  "baseline_activation_rate": 0.35,
+  "free_user_monthly_churn": 0.12,
+  "monthly_support_cost_per_fte": 7000.0,
+  "tickets_per_fte_monthly": 300,
+  "paid_tickets_per_customer_monthly": 1.83,
+  "illustrative": true,
+  "description": "Baseline operational dynamics constants for NimbusDesk simulation model"
+}

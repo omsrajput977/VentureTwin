@@ -27,3 +27,4 @@ def lookup_support_metrics() -> Dict[str, Any]:
 def lookup_unit_economics() -> Dict[str, Any]:
     data = get_company_data_source()
     return data["unit_economics"]
+

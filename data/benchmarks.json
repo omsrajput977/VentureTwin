@@ -1,0 +1,38 @@
+[
+  {
+    "id": "b2b_saas_freemium_conversion",
+    "description": "Typical B2B SaaS Free-to-Paid Cohort Conversion Rates",
+    "value_low": 0.010,
+    "value_high": 0.035,
+    "illustrative": true,
+    "sourced": false,
+    "url": null
+  },
+  {
+    "id": "saas_infra_per_free_user",
+    "description": "Average Monthly Cloud Compute and Database Cost per Active Free Tier User",
+    "value_low": 0.50,
+    "value_high": 2.00,
+    "illustrative": true,
+    "sourced": false,
+    "url": null
+  },
+  {
+    "id": "saas_freemium_cannibalization",
+    "description": "Observed Cannibalization of Low-Tier Paid Plans Following Free Plan Launch",
+    "value_low": 0.05,
+    "value_high": 0.15,
+    "illustrative": true,
+    "sourced": false,
+    "url": null
+  },
+  {
+    "id": "free_support_ticket_rate",
+    "description": "Monthly Support Tickets Generated per Active Free User Under Community Forum Gating",
+    "value_low": 0.01,
+    "value_high": 0.04,
+    "illustrative": true,
+    "sourced": false,
+    "url": null
+  }
+]

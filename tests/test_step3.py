@@ -10,9 +10,10 @@ def test_parse_decision_queries():
     assert d1.type == "free_plan"
     assert "runway" in d1.objective.lower()
 
-    # Price change query
+    # Price change query (honestly demarcated as planned for v0.2)
     d2 = parse_decision_query("What if we raise price by 15%?")
-    assert d2.type == "price_change"
+    assert d2.type == "unsupported"
+    assert "planned for v0.2" in d2.objective.lower()
 
     # Unsupported query
     d3 = parse_decision_query("Should we rewrite our backend in Rust?")
@@ -62,3 +63,4 @@ def test_dag_missing_dependency():
 
     with pytest.raises(DAGValidationError):
         dag.validate()
+
