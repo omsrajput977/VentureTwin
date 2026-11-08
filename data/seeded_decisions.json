@@ -1,0 +1,96 @@
+[
+  {
+    "id": "dec_2023_q3_annual_discount",
+    "question": "Offer 20% discount on upfront annual billing",
+    "type": "price_change",
+    "chosen_strategy": "20% Annual Discount with 14-day lock",
+    "approved_at": "2023-09-15T10:00:00Z",
+    "outcome_recorded_at": "2024-03-15T10:00:00Z",
+    "status": "completed",
+    "predicted_metrics": {
+      "arr": 950000,
+      "runway_extension_months": 3.5,
+      "annual_churn_rate": 0.018,
+      "cash_inflow_initial": 180000
+    },
+    "actual_metrics": {
+      "arr": 920000,
+      "runway_extension_months": 3.1,
+      "annual_churn_rate": 0.019,
+      "cash_inflow_initial": 165000
+    },
+    "calibration_error": {
+      "arr_error_pct": -3.16,
+      "runway_error_months": -0.4,
+      "most_wrong_assumption": "annual_commitment_takeup_rate"
+    }
+  },
+  {
+    "id": "dec_2023_q4_price_bump_starter",
+    "question": "Increase Starter plan price from $59/mo to $79/mo for new customers",
+    "type": "price_change",
+    "chosen_strategy": "Grandfather existing users, $79 for new",
+    "approved_at": "2023-11-01T14:30:00Z",
+    "outcome_recorded_at": "2024-05-01T14:30:00Z",
+    "status": "completed",
+    "predicted_metrics": {
+      "mrr_delta_6mo": 14000,
+      "churn_increase_pct": 0.006,
+      "conversion_drop_pct": 0.008
+    },
+    "actual_metrics": {
+      "mrr_delta_6mo": 16200,
+      "churn_increase_pct": 0.004,
+      "conversion_drop_pct": 0.005
+    },
+    "calibration_error": {
+      "mrr_delta_error_pct": 15.71,
+      "most_wrong_assumption": "price_elasticity_of_demand"
+    }
+  },
+  {
+    "id": "dec_2024_q1_enterprise_tier",
+    "question": "Introduce custom SLA Enterprise tier at $1,200/mo",
+    "type": "packaging_tier",
+    "chosen_strategy": "Dedicated support + custom SSO tier",
+    "approved_at": "2024-02-10T09:15:00Z",
+    "outcome_recorded_at": "2024-08-10T09:15:00Z",
+    "status": "completed",
+    "predicted_metrics": {
+      "enterprise_deals_monthly": 2.0,
+      "support_load_increase_pct": 0.15,
+      "sales_cycle_days": 45
+    },
+    "actual_metrics": {
+      "enterprise_deals_monthly": 2.2,
+      "support_load_increase_pct": 0.18,
+      "sales_cycle_days": 52
+    },
+    "calibration_error": {
+      "deals_error_pct": 10.0,
+      "sales_cycle_error_days": 7.0,
+      "most_wrong_assumption": "enterprise_procurement_delay"
+    }
+  },
+  {
+    "id": "dec_2024_q2_usage_metering",
+    "question": "Add per-seat usage overage fees for Pro tier",
+    "type": "packaging_tier",
+    "chosen_strategy": "Soft cap at 10 seats, $15/seat overage",
+    "approved_at": "2024-05-20T16:00:00Z",
+    "outcome_recorded_at": "2024-11-20T16:00:00Z",
+    "status": "completed",
+    "predicted_metrics": {
+      "net_expansion_revenue_pct": 0.08,
+      "pro_plan_churn_delta": 0.002
+    },
+    "actual_metrics": {
+      "net_expansion_revenue_pct": 0.052,
+      "pro_plan_churn_delta": 0.005
+    },
+    "calibration_error": {
+      "expansion_error_pct": -35.0,
+      "most_wrong_assumption": "user_metering_friction"
+    }
+  }
+]

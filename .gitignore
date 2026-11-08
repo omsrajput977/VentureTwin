@@ -42,5 +42,9 @@ Thumbs.db
 htmlcov/
 .pytest_cache/
 
-# Logs
+# Logs & Databases
 *.log
+*.db
+*.sqlite
+*.sqlite3
+

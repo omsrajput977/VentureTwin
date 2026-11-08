@@ -1,0 +1,5617 @@
+{
+  "decision": {
+    "id": "dec_175709d1",
+    "type": "free_plan",
+    "question": "Should we launch a free plan?",
+    "objective": "Evaluate financial runway, acquisition velocity, infra strain, and cannibalization of launching a free tier.",
+    "constraints": {
+      "min_runway_months": 10.0
+    },
+    "created_at": "2026-11-08T11:48:22.797844+00:00"
+  },
+  "tasks": {
+    "task_cfo_analysis": {
+      "id": "task_cfo_analysis",
+      "owner_agent": "cfo",
+      "depends_on": [],
+      "status": "done",
+      "input_ref": null,
+      "output_ref": null,
+      "attempts": 1,
+      "max_attempts": 3,
+      "error": null
+    },
+    "task_growth_analysis": {
+      "id": "task_growth_analysis",
+      "owner_agent": "growth",
+      "depends_on": [],
+      "status": "done",
+      "input_ref": null,
+      "output_ref": null,
+      "attempts": 1,
+      "max_attempts": 3,
+      "error": null
+    },
+    "task_cto_analysis": {
+      "id": "task_cto_analysis",
+      "owner_agent": "cto",
+      "depends_on": [],
+      "status": "done",
+      "input_ref": null,
+      "output_ref": null,
+      "attempts": 1,
+      "max_attempts": 3,
+      "error": null
+    },
+    "task_customer_analysis": {
+      "id": "task_customer_analysis",
+      "owner_agent": "customer",
+      "depends_on": [],
+      "status": "done",
+      "input_ref": null,
+      "output_ref": null,
+      "attempts": 1,
+      "max_attempts": 3,
+      "error": null
+    },
+    "task_product_analysis": {
+      "id": "task_product_analysis",
+      "owner_agent": "product",
+      "depends_on": [],
+      "status": "done",
+      "input_ref": null,
+      "output_ref": null,
+      "attempts": 1,
+      "max_attempts": 3,
+      "error": null
+    },
+    "task_skeptic_audit": {
+      "id": "task_skeptic_audit",
+      "owner_agent": "skeptic",
+      "depends_on": [
+        "task_cfo_analysis",
+        "task_growth_analysis",
+        "task_cto_analysis",
+        "task_customer_analysis",
+        "task_product_analysis"
+      ],
+      "status": "done",
+      "input_ref": null,
+      "output_ref": null,
+      "attempts": 1,
+      "max_attempts": 3,
+      "error": null
+    },
+    "task_conflict_resolution": {
+      "id": "task_conflict_resolution",
+      "owner_agent": "supervisor",
+      "depends_on": [
+        "task_skeptic_audit"
+      ],
+      "status": "done",
+      "input_ref": null,
+      "output_ref": null,
+      "attempts": 1,
+      "max_attempts": 3,
+      "error": null
+    },
+    "task_simulation_engine": {
+      "id": "task_simulation_engine",
+      "owner_agent": "supervisor",
+      "depends_on": [
+        "task_conflict_resolution"
+      ],
+      "status": "done",
+      "input_ref": null,
+      "output_ref": null,
+      "attempts": 1,
+      "max_attempts": 3,
+      "error": null
+    },
+    "task_workflow_verification": {
+      "id": "task_workflow_verification",
+      "owner_agent": "skeptic",
+      "depends_on": [
+        "task_simulation_engine"
+      ],
+      "status": "done",
+      "input_ref": null,
+      "output_ref": null,
+      "attempts": 1,
+      "max_attempts": 3,
+      "error": null
+    },
+    "task_report_generation": {
+      "id": "task_report_generation",
+      "owner_agent": "supervisor",
+      "depends_on": [
+        "task_workflow_verification"
+      ],
+      "status": "done",
+      "input_ref": null,
+      "output_ref": null,
+      "attempts": 1,
+      "max_attempts": 3,
+      "error": null
+    }
+  },
+  "findings": [
+    {
+      "agent": "CFO",
+      "task_id": "task_cfo_analysis",
+      "claim": "Runway is 13.2 months ($1.65M cash). Free plan without strict usage caps risks compressing runway below the 10.0-month safety threshold.",
+      "recommendation": "proceed_with_limits",
+      "assumptions": [
+        {
+          "name": "free_to_paid_conversion",
+          "low": 0.01,
+          "base": 0.015,
+          "high": 0.022,
+          "unit": "rate",
+          "provenance": "simulated_estimate",
+          "source_ref": "cfo_cohort_analysis",
+          "confidence": 0.7,
+          "proposed_by": "CFO",
+          "challenged_by_skeptic": false
+        },
+        {
+          "name": "min_acceptable_runway_months",
+          "low": 8.0,
+          "base": 10.0,
+          "high": 12.0,
+          "unit": "months",
+          "provenance": "verified_data",
+          "source_ref": "financials.target_min_runway_months",
+          "confidence": 0.95,
+          "proposed_by": "CFO",
+          "challenged_by_skeptic": false
+        }
+      ],
+      "evidence": [
+        {
+          "source_type": "company_data",
+          "source_ref": "financials.cash_balance",
+          "snippet": "Cash balance: $1,650,000.00, Net monthly burn: $125,000.00, Runway: 13.2 months."
+        }
+      ],
+      "confidence": 0.82,
+      "limitations": [
+        "Assumes fixed baseline opex without secondary headcount expansion."
+      ],
+      "status": "ok"
+    },
+    {
+      "agent": "Growth",
+      "task_id": "task_growth_analysis",
+      "claim": "A friction-free entry tier will unlock top-of-funnel velocity, generating 3,800+ signups/mo.",
+      "recommendation": "proceed",
+      "assumptions": [
+        {
+          "name": "free_to_paid_conversion",
+          "low": 0.025,
+          "base": 0.035,
+          "high": 0.05,
+          "unit": "rate",
+          "provenance": "external_research",
+          "source_ref": "funnel_benchmark_survey",
+          "confidence": 0.45,
+          "proposed_by": "Growth",
+          "challenged_by_skeptic": true
+        },
+        {
+          "name": "monthly_free_signups",
+          "low": 2500.0,
+          "base": 3800.0,
+          "high": 5200.0,
+          "unit": "users/month",
+          "provenance": "simulated_estimate",
+          "source_ref": "funnel_top_estimate",
+          "confidence": 0.7,
+          "proposed_by": "Growth",
+          "challenged_by_skeptic": false
+        }
+      ],
+      "evidence": [
+        {
+          "source_type": "company_data",
+          "source_ref": "funnel.monthly_visitors",
+          "snippet": "Site receives 65,000 unique visitors/month with only 1100 trial starts."
+        }
+      ],
+      "confidence": 0.78,
+      "limitations": [
+        "Dependent on product onboarding self-serve experience."
+      ],
+      "status": "ok"
+    },
+    {
+      "agent": "CTO",
+      "task_id": "task_cto_analysis",
+      "claim": "Infrastructure can absorb up to 5,000 free users if rate limits and database storage quotas are strictly capped.",
+      "recommendation": "proceed_with_limits",
+      "assumptions": [
+        {
+          "name": "infra_cost_per_free_user",
+          "low": 0.75,
+          "base": 1.15,
+          "high": 1.85,
+          "unit": "USD/user/month",
+          "provenance": "verified_data",
+          "source_ref": "infrastructure.infra_cost_per_free_user_estimate",
+          "confidence": 0.88,
+          "proposed_by": "CTO",
+          "challenged_by_skeptic": false
+        }
+      ],
+      "evidence": [
+        {
+          "source_type": "company_data",
+          "source_ref": "infrastructure.monthly_cloud_cost",
+          "snippet": "Baseline cloud spend is $14,500/mo; estimated free-user cost is $1.15/user/mo."
+        }
+      ],
+      "confidence": 0.85,
+      "limitations": [
+        "Requires engineering to implement Redis-based quota enforcers."
+      ],
+      "status": "ok"
+    },
+    {
+      "agent": "Customer",
+      "task_id": "task_customer_analysis",
+      "claim": "Starter plan ($79/mo) faces cannibalization risk of 8-15% if the free tier includes exports or integrations.",
+      "recommendation": "proceed_with_limits",
+      "assumptions": [
+        {
+          "name": "paid_to_free_cannibalization",
+          "low": 0.04,
+          "base": 0.08,
+          "high": 0.15,
+          "unit": "rate",
+          "provenance": "ai_assumption",
+          "source_ref": "starter_tier_feature_overlap",
+          "confidence": 0.6,
+          "proposed_by": "Customer",
+          "challenged_by_skeptic": false
+        }
+      ],
+      "evidence": [
+        {
+          "source_type": "company_data",
+          "source_ref": "customers.total_paying",
+          "snippet": "Currently 655 active paying subscribers, with 450 on Starter ($79/mo)."
+        }
+      ],
+      "confidence": 0.72,
+      "limitations": [
+        "Survey sample on Starter users is limited to last quarter."
+      ],
+      "status": "ok"
+    },
+    {
+      "agent": "Product",
+      "task_id": "task_product_analysis",
+      "claim": "Strategy B (Usage Caps) creates the most natural friction point for self-serve upgrades without gating essential utility.",
+      "recommendation": "proceed_with_limits",
+      "assumptions": [
+        {
+          "name": "activation_drop_from_gating",
+          "low": 0.05,
+          "base": 0.1,
+          "high": 0.2,
+          "unit": "rate",
+          "provenance": "simulated_estimate",
+          "source_ref": "product_onboarding_benchmarks",
+          "confidence": 0.7,
+          "proposed_by": "Product",
+          "challenged_by_skeptic": false
+        }
+      ],
+      "evidence": [
+        {
+          "source_type": "calculation",
+          "source_ref": "feature_matrix",
+          "snippet": "Capping at 3 team members and 500 tickets/mo protects 92% of Starter value proposition."
+        }
+      ],
+      "confidence": 0.8,
+      "limitations": [
+        "Depends on UI upgrade prompts deployed in app."
+      ],
+      "status": "ok"
+    },
+    {
+      "agent": "Skeptic",
+      "task_id": "task_skeptic_audit",
+      "claim": "Challenged 1 assumption(s). Growth's conversion estimate of 3.5% lacks historical self-serve telemetry in NimbusDesk's data and carries external research provenance.",
+      "recommendation": "proceed_with_limits",
+      "assumptions": [],
+      "evidence": [
+        {
+          "source_type": "calculation",
+          "source_ref": "skeptic_audit_log",
+          "snippet": "Downgraded confidence on 1 speculative assumption(s)."
+        }
+      ],
+      "confidence": 0.9,
+      "limitations": [
+        "Skeptic review based strictly on submitted findings and historical data."
+      ],
+      "status": "ok"
+    }
+  ],
+  "assumptions": [
+    {
+      "name": "free_to_paid_conversion",
+      "low": 0.01,
+      "base": 0.015,
+      "high": 0.022,
+      "unit": "rate",
+      "provenance": "simulated_estimate",
+      "source_ref": "cfo_cohort_analysis",
+      "confidence": 0.7,
+      "proposed_by": "CFO",
+      "challenged_by_skeptic": false
+    },
+    {
+      "name": "min_acceptable_runway_months",
+      "low": 8.0,
+      "base": 10.0,
+      "high": 12.0,
+      "unit": "months",
+      "provenance": "verified_data",
+      "source_ref": "financials.target_min_runway_months",
+      "confidence": 0.95,
+      "proposed_by": "CFO",
+      "challenged_by_skeptic": false
+    },
+    {
+      "name": "free_to_paid_conversion",
+      "low": 0.025,
+      "base": 0.035,
+      "high": 0.05,
+      "unit": "rate",
+      "provenance": "external_research",
+      "source_ref": "funnel_benchmark_survey",
+      "confidence": 0.45,
+      "proposed_by": "Growth",
+      "challenged_by_skeptic": true
+    },
+    {
+      "name": "monthly_free_signups",
+      "low": 2500.0,
+      "base": 3800.0,
+      "high": 5200.0,
+      "unit": "users/month",
+      "provenance": "simulated_estimate",
+      "source_ref": "funnel_top_estimate",
+      "confidence": 0.7,
+      "proposed_by": "Growth",
+      "challenged_by_skeptic": false
+    },
+    {
+      "name": "infra_cost_per_free_user",
+      "low": 0.75,
+      "base": 1.15,
+      "high": 1.85,
+      "unit": "USD/user/month",
+      "provenance": "verified_data",
+      "source_ref": "infrastructure.infra_cost_per_free_user_estimate",
+      "confidence": 0.88,
+      "proposed_by": "CTO",
+      "challenged_by_skeptic": false
+    },
+    {
+      "name": "paid_to_free_cannibalization",
+      "low": 0.04,
+      "base": 0.08,
+      "high": 0.15,
+      "unit": "rate",
+      "provenance": "ai_assumption",
+      "source_ref": "starter_tier_feature_overlap",
+      "confidence": 0.6,
+      "proposed_by": "Customer",
+      "challenged_by_skeptic": false
+    },
+    {
+      "name": "activation_drop_from_gating",
+      "low": 0.05,
+      "base": 0.1,
+      "high": 0.2,
+      "unit": "rate",
+      "provenance": "simulated_estimate",
+      "source_ref": "product_onboarding_benchmarks",
+      "confidence": 0.7,
+      "proposed_by": "Product",
+      "challenged_by_skeptic": false
+    }
+  ],
+  "conflicts": [
+    {
+      "id": "conf_rec_2992c3",
+      "type": "contradictory_recommendations",
+      "agents": [
+        "Growth",
+        "CFO"
+      ],
+      "disputed_item": "decision_recommendation",
+      "evidence": [
+        {
+          "source_type": "company_data",
+          "source_ref": "funnel.monthly_visitors",
+          "snippet": "Site receives 65,000 unique visitors/month with only 1100 trial starts."
+        },
+        {
+          "source_type": "company_data",
+          "source_ref": "financials.cash_balance",
+          "snippet": "Cash balance: $1,650,000.00, Net monthly burn: $125,000.00, Runway: 13.2 months."
+        }
+      ],
+      "resolution": "Resolved by simulation: Reconciled Growth (proceed) and CFO (proceed_with_limits). Simulation demonstrates that unconstrained rollout introduces tail risk, but capped rollout preserves a gross margin of 66.0% and adds $741,130.08 minimum net contribution. Recommendation unified as 'proceed_with_limits'.",
+      "simulation_ids": [
+        "sim_b_expe_c6a090",
+        "sim_b_expe_fde0f9"
+      ],
+      "unresolved": false
+    },
+    {
+      "id": "conf_rec_693344",
+      "type": "contradictory_recommendations",
+      "agents": [
+        "Growth",
+        "CTO"
+      ],
+      "disputed_item": "decision_recommendation",
+      "evidence": [
+        {
+          "source_type": "company_data",
+          "source_ref": "funnel.monthly_visitors",
+          "snippet": "Site receives 65,000 unique visitors/month with only 1100 trial starts."
+        },
+        {
+          "source_type": "company_data",
+          "source_ref": "infrastructure.monthly_cloud_cost",
+          "snippet": "Baseline cloud spend is $14,500/mo; estimated free-user cost is $1.15/user/mo."
+        }
+      ],
+      "resolution": "Resolved by simulation: Reconciled Growth (proceed) and CTO (proceed_with_limits). Simulation demonstrates that unconstrained rollout introduces tail risk, but capped rollout preserves a gross margin of 66.0% and adds $869,238.08 minimum net contribution. Recommendation unified as 'proceed_with_limits'.",
+      "simulation_ids": [
+        "sim_b_expe_bd3733",
+        "sim_b_expe_93bb17"
+      ],
+      "unresolved": false
+    },
+    {
+      "id": "conf_rec_0ee47a",
+      "type": "contradictory_recommendations",
+      "agents": [
+        "Growth",
+        "Customer"
+      ],
+      "disputed_item": "decision_recommendation",
+      "evidence": [
+        {
+          "source_type": "company_data",
+          "source_ref": "funnel.monthly_visitors",
+          "snippet": "Site receives 65,000 unique visitors/month with only 1100 trial starts."
+        },
+        {
+          "source_type": "company_data",
+          "source_ref": "customers.total_paying",
+          "snippet": "Currently 655 active paying subscribers, with 450 on Starter ($79/mo)."
+        }
+      ],
+      "resolution": "Resolved by simulation: Reconciled Growth (proceed) and Customer (proceed_with_limits). Simulation demonstrates that unconstrained rollout introduces tail risk, but capped rollout preserves a gross margin of 66.0% and adds $869,238.08 minimum net contribution. Recommendation unified as 'proceed_with_limits'.",
+      "simulation_ids": [
+        "sim_b_expe_84f274",
+        "sim_b_expe_059af6"
+      ],
+      "unresolved": false
+    },
+    {
+      "id": "conf_rec_0a176b",
+      "type": "contradictory_recommendations",
+      "agents": [
+        "Growth",
+        "Product"
+      ],
+      "disputed_item": "decision_recommendation",
+      "evidence": [
+        {
+          "source_type": "company_data",
+          "source_ref": "funnel.monthly_visitors",
+          "snippet": "Site receives 65,000 unique visitors/month with only 1100 trial starts."
+        },
+        {
+          "source_type": "calculation",
+          "source_ref": "feature_matrix",
+          "snippet": "Capping at 3 team members and 500 tickets/mo protects 92% of Starter value proposition."
+        }
+      ],
+      "resolution": "Resolved by simulation: Reconciled Growth (proceed) and Product (proceed_with_limits). Simulation demonstrates that unconstrained rollout introduces tail risk, but capped rollout preserves a gross margin of 66.0% and adds $869,238.08 minimum net contribution. Recommendation unified as 'proceed_with_limits'.",
+      "simulation_ids": [
+        "sim_b_expe_c61202",
+        "sim_b_expe_1806ad"
+      ],
+      "unresolved": false
+    },
+    {
+      "id": "conf_rec_dbfc5a",
+      "type": "contradictory_recommendations",
+      "agents": [
+        "Growth",
+        "Skeptic"
+      ],
+      "disputed_item": "decision_recommendation",
+      "evidence": [
+        {
+          "source_type": "company_data",
+          "source_ref": "funnel.monthly_visitors",
+          "snippet": "Site receives 65,000 unique visitors/month with only 1100 trial starts."
+        },
+        {
+          "source_type": "calculation",
+          "source_ref": "skeptic_audit_log",
+          "snippet": "Downgraded confidence on 1 speculative assumption(s)."
+        }
+      ],
+      "resolution": "Resolved by simulation: Reconciled Growth (proceed) and Skeptic (proceed_with_limits). Simulation demonstrates that unconstrained rollout introduces tail risk, but capped rollout preserves a gross margin of 66.0% and adds $869,238.08 minimum net contribution. Recommendation unified as 'proceed_with_limits'.",
+      "simulation_ids": [
+        "sim_b_expe_b2a5e0",
+        "sim_b_expe_887434"
+      ],
+      "unresolved": false
+    },
+    {
+      "id": "conf_range_09f69f",
+      "type": "non_overlapping_ranges",
+      "agents": [
+        "CFO",
+        "Growth"
+      ],
+      "disputed_item": "free_to_paid_conversion",
+      "evidence": [
+        {
+          "source_type": "calculation",
+          "source_ref": "CFO.free_to_paid_conversion",
+          "snippet": "CFO proposed range [0.01, 0.022] with base 0.015"
+        },
+        {
+          "source_type": "calculation",
+          "source_ref": "Growth.free_to_paid_conversion",
+          "snippet": "Growth proposed range [0.025, 0.05] with base 0.035"
+        }
+      ],
+      "resolution": "Resolved by simulation: Under CFO's assumptions, 12mo net contribution is $741,130.08 with 92.3 months runway. Under Growth's assumptions, net contribution reaches $1,527,735.08 (delta: $786,605.00) with 999.0 months runway. Because the conservative runway (92.3 mo) satisfies the minimum threshold (10.0 mo), the strategy is deemed financially viable with bounded risk under B usage caps.",
+      "simulation_ids": [
+        "sim_b_expe_1549d2",
+        "sim_b_expe_a4e05b"
+      ],
+      "unresolved": false
+    }
+  ],
+  "simulation_runs": [
+    {
+      "id": "sim_a_cons_d87fb4",
+      "strategy": "A_limited_features",
+      "scenario": "conservative",
+      "parameters": {
+        "free_to_paid_conversion": 0.025,
+        "min_acceptable_runway_months": 8.0,
+        "monthly_free_signups": 2500.0,
+        "infra_cost_per_free_user": 1.85,
+        "paid_to_free_cannibalization": 0.15,
+        "activation_drop_from_gating": 0.05,
+        "paid_funnel_lift": 1.08,
+        "free_user_ticket_rate": 0.12
+      },
+      "outputs": {
+        "strategy": "A_limited_features",
+        "mrr_6": 199841.0,
+        "mrr_12": 278530.5,
+        "mrr_24": 408949.5,
+        "net_contribution_6": 150337.25,
+        "net_contribution_12": 596079.55,
+        "net_contribution_24": 2355009.6,
+        "runway_months_12": 24.5,
+        "gross_margin_12": 0.5833,
+        "support_headcount_12": 13,
+        "infra_cost_12": 25074.6,
+        "paying_customers_12": 1653,
+        "free_users_12": 5716,
+        "history": [
+          {
+            "month": 1,
+            "paying_customers": 748,
+            "active_free_users": 875,
+            "mrr": 126038.0,
+            "infra_cost": 16118.75,
+            "support_cost": 35000.0,
+            "gross_margin": 0.5944,
+            "cash_balance": 1532049.25,
+            "runway_months": 13.0,
+            "net_contribution": 7049.25
+          },
+          {
+            "month": 2,
+            "paying_customers": 839,
+            "active_free_users": 1645,
+            "mrr": 141371.5,
+            "infra_cost": 17543.25,
+            "support_cost": 42000.0,
+            "gross_margin": 0.5788,
+            "cash_balance": 1421007.5,
+            "runway_months": 12.8,
+            "net_contribution": 21007.5
+          },
+          {
+            "month": 3,
+            "paying_customers": 928,
+            "active_free_users": 2322,
+            "mrr": 156368.0,
+            "infra_cost": 18795.7,
+            "support_cost": 49000.0,
+            "gross_margin": 0.5664,
+            "cash_balance": 1316709.8,
+            "runway_months": 12.6,
+            "net_contribution": 41709.8
+          },
+          {
+            "month": 4,
+            "paying_customers": 1016,
+            "active_free_users": 2918,
+            "mrr": 171196.0,
+            "infra_cost": 19898.3,
+            "support_cost": 56000.0,
+            "gross_margin": 0.5567,
+            "cash_balance": 1219137.5,
+            "runway_months": 12.5,
+            "net_contribution": 69137.5
+          },
+          {
+            "month": 5,
+            "paying_customers": 1102,
+            "active_free_users": 3442,
+            "mrr": 185687.0,
+            "infra_cost": 20867.7,
+            "support_cost": 63000.0,
+            "gross_margin": 0.5483,
+            "cash_balance": 1128086.8,
+            "runway_months": 12.4,
+            "net_contribution": 103086.8
+          },
+          {
+            "month": 6,
+            "paying_customers": 1186,
+            "active_free_users": 3903,
+            "mrr": 199841.0,
+            "infra_cost": 21720.55,
+            "support_cost": 63000.0,
+            "gross_margin": 0.5761,
+            "cash_balance": 1050337.25,
+            "runway_months": 13.5,
+            "net_contribution": 150337.25
+          },
+          {
+            "month": 7,
+            "paying_customers": 1268,
+            "active_free_users": 4309,
+            "mrr": 213658.0,
+            "infra_cost": 22471.65,
+            "support_cost": 70000.0,
+            "gross_margin": 0.5672,
+            "cash_balance": 978653.6,
+            "runway_months": 13.7,
+            "net_contribution": 203653.6
+          },
+          {
+            "month": 8,
+            "paying_customers": 1348,
+            "active_free_users": 4666,
+            "mrr": 227138.0,
+            "infra_cost": 23132.1,
+            "support_cost": 77000.0,
+            "gross_margin": 0.5592,
+            "cash_balance": 912789.5,
+            "runway_months": 13.9,
+            "net_contribution": 262789.5
+          },
+          {
+            "month": 9,
+            "paying_customers": 1427,
+            "active_free_users": 4981,
+            "mrr": 240449.5,
+            "infra_cost": 23714.85,
+            "support_cost": 77000.0,
+            "gross_margin": 0.5811,
+            "cash_balance": 859654.15,
+            "runway_months": 16.2,
+            "net_contribution": 334654.15
+          },
+          {
+            "month": 10,
+            "paying_customers": 1504,
+            "active_free_users": 5258,
+            "mrr": 253424.0,
+            "infra_cost": 24227.3,
+            "support_cost": 84000.0,
+            "gross_margin": 0.5729,
+            "cash_balance": 811980.85,
+            "runway_months": 17.0,
+            "net_contribution": 411980.85
+          },
+          {
+            "month": 11,
+            "paying_customers": 1579,
+            "active_free_users": 5502,
+            "mrr": 266061.5,
+            "infra_cost": 24678.7,
+            "support_cost": 84000.0,
+            "gross_margin": 0.5915,
+            "cash_balance": 776493.65,
+            "runway_months": 21.9,
+            "net_contribution": 501493.65
+          },
+          {
+            "month": 12,
+            "paying_customers": 1653,
+            "active_free_users": 5716,
+            "mrr": 278530.5,
+            "infra_cost": 25074.6,
+            "support_cost": 91000.0,
+            "gross_margin": 0.5833,
+            "cash_balance": 746079.55,
+            "runway_months": 24.5,
+            "net_contribution": 596079.55
+          },
+          {
+            "month": 13,
+            "paying_customers": 1725,
+            "active_free_users": 5905,
+            "mrr": 290662.5,
+            "infra_cost": 25424.25,
+            "support_cost": 91000.0,
+            "gross_margin": 0.5995,
+            "cash_balance": 727447.8,
+            "runway_months": 39.0,
+            "net_contribution": 702447.8
+          },
+          {
+            "month": 14,
+            "paying_customers": 1796,
+            "active_free_users": 6071,
+            "mrr": 302626.0,
+            "infra_cost": 25731.35,
+            "support_cost": 98000.0,
+            "gross_margin": 0.5911,
+            "cash_balance": 713472.45,
+            "runway_months": 51.1,
+            "net_contribution": 813472.45
+          },
+          {
+            "month": 15,
+            "paying_customers": 1865,
+            "active_free_users": 6217,
+            "mrr": 314252.5,
+            "infra_cost": 26001.45,
+            "support_cost": 98000.0,
+            "gross_margin": 0.6054,
+            "cash_balance": 710853.5,
+            "runway_months": 271.4,
+            "net_contribution": 935853.5
+          },
+          {
+            "month": 16,
+            "paying_customers": 1933,
+            "active_free_users": 6345,
+            "mrr": 325710.5,
+            "infra_cost": 26238.25,
+            "support_cost": 105000.0,
+            "gross_margin": 0.5971,
+            "cash_balance": 712455.75,
+            "runway_months": 999.0,
+            "net_contribution": 1062455.75
+          },
+          {
+            "month": 17,
+            "paying_customers": 1999,
+            "active_free_users": 6458,
+            "mrr": 336831.5,
+            "infra_cost": 26447.3,
+            "support_cost": 105000.0,
+            "gross_margin": 0.6098,
+            "cash_balance": 724969.95,
+            "runway_months": 999.0,
+            "net_contribution": 1199969.95
+          },
+          {
+            "month": 18,
+            "paying_customers": 2064,
+            "active_free_users": 6558,
+            "mrr": 347784.0,
+            "infra_cost": 26632.3,
+            "support_cost": 112000.0,
+            "gross_margin": 0.6014,
+            "cash_balance": 741251.65,
+            "runway_months": 999.0,
+            "net_contribution": 1341251.65
+          },
+          {
+            "month": 19,
+            "paying_customers": 2128,
+            "active_free_users": 6646,
+            "mrr": 358568.0,
+            "infra_cost": 26795.1,
+            "support_cost": 112000.0,
+            "gross_margin": 0.6129,
+            "cash_balance": 768154.55,
+            "runway_months": 999.0,
+            "net_contribution": 1493154.55
+          },
+          {
+            "month": 20,
+            "paying_customers": 2190,
+            "active_free_users": 6723,
+            "mrr": 369015.0,
+            "infra_cost": 26937.55,
+            "support_cost": 119000.0,
+            "gross_margin": 0.6045,
+            "cash_balance": 798362.0,
+            "runway_months": 999.0,
+            "net_contribution": 1648362.0
+          },
+          {
+            "month": 21,
+            "paying_customers": 2251,
+            "active_free_users": 6791,
+            "mrr": 379293.5,
+            "infra_cost": 27063.35,
+            "support_cost": 119000.0,
+            "gross_margin": 0.6149,
+            "cash_balance": 838722.15,
+            "runway_months": 999.0,
+            "net_contribution": 1813722.15
+          },
+          {
+            "month": 22,
+            "paying_customers": 2311,
+            "active_free_users": 6851,
+            "mrr": 389403.5,
+            "infra_cost": 27174.35,
+            "support_cost": 119000.0,
+            "gross_margin": 0.6246,
+            "cash_balance": 889081.3,
+            "runway_months": 999.0,
+            "net_contribution": 1989081.3
+          },
+          {
+            "month": 23,
+            "paying_customers": 2370,
+            "active_free_users": 6903,
+            "mrr": 399345.0,
+            "infra_cost": 27270.55,
+            "support_cost": 126000.0,
+            "gross_margin": 0.6162,
+            "cash_balance": 942285.75,
+            "runway_months": 999.0,
+            "net_contribution": 2167285.75
+          },
+          {
+            "month": 24,
+            "paying_customers": 2427,
+            "active_free_users": 6949,
+            "mrr": 408949.5,
+            "infra_cost": 27355.65,
+            "support_cost": 126000.0,
+            "gross_margin": 0.625,
+            "cash_balance": 1005009.6,
+            "runway_months": 999.0,
+            "net_contribution": 2355009.6
+          }
+        ]
+      },
+      "seed": 42
+    },
+    {
+      "id": "sim_a_expe_89c3db",
+      "strategy": "A_limited_features",
+      "scenario": "expected",
+      "parameters": {
+        "free_to_paid_conversion": 0.035,
+        "min_acceptable_runway_months": 10.0,
+        "monthly_free_signups": 3800.0,
+        "infra_cost_per_free_user": 1.15,
+        "paid_to_free_cannibalization": 0.08,
+        "activation_drop_from_gating": 0.1,
+        "paid_funnel_lift": 1.18,
+        "free_user_ticket_rate": 0.12
+      },
+      "outputs": {
+        "strategy": "A_limited_features",
+        "mrr_6": 271285.0,
+        "mrr_12": 412488.0,
+        "mrr_24": 646703.0,
+        "net_contribution_6": 308813.4,
+        "net_contribution_12": 1198730.7,
+        "net_contribution_24": 4567268.4,
+        "runway_months_12": 999.0,
+        "gross_margin_12": 0.6182,
+        "support_headcount_12": 19,
+        "infra_cost_12": 24493.5,
+        "paying_customers_12": 2448,
+        "free_users_12": 8690,
+        "history": [
+          {
+            "month": 1,
+            "paying_customers": 823,
+            "active_free_users": 1330,
+            "mrr": 138675.5,
+            "infra_cost": 16029.5,
+            "support_cost": 42000.0,
+            "gross_margin": 0.5815,
+            "cash_balance": 1537776.0,
+            "runway_months": 13.7,
+            "net_contribution": 12776.0
+          },
+          {
+            "month": 2,
+            "paying_customers": 987,
+            "active_free_users": 2500,
+            "mrr": 166309.5,
+            "infra_cost": 17375.0,
+            "support_cost": 56000.0,
+            "gross_margin": 0.5588,
+            "cash_balance": 1437840.5,
+            "runway_months": 14.4,
+            "net_contribution": 37840.5
+          },
+          {
+            "month": 3,
+            "paying_customers": 1148,
+            "active_free_users": 3530,
+            "mrr": 193438.0,
+            "infra_cost": 18559.5,
+            "support_cost": 63000.0,
+            "gross_margin": 0.5784,
+            "cash_balance": 1356849.0,
+            "runway_months": 16.8,
+            "net_contribution": 81849.0
+          },
+          {
+            "month": 4,
+            "paying_customers": 1305,
+            "active_free_users": 4436,
+            "mrr": 219892.5,
+            "infra_cost": 19601.4,
+            "support_cost": 70000.0,
+            "gross_margin": 0.5925,
+            "cash_balance": 1294270.1,
+            "runway_months": 20.7,
+            "net_contribution": 144270.1
+          },
+          {
+            "month": 5,
+            "paying_customers": 1459,
+            "active_free_users": 5233,
+            "mrr": 245841.5,
+            "infra_cost": 20517.95,
+            "support_cost": 84000.0,
+            "gross_margin": 0.5749,
+            "cash_balance": 1242723.65,
+            "runway_months": 24.1,
+            "net_contribution": 217723.65
+          },
+          {
+            "month": 6,
+            "paying_customers": 1610,
+            "active_free_users": 5935,
+            "mrr": 271285.0,
+            "infra_cost": 21325.25,
+            "support_cost": 91000.0,
+            "gross_margin": 0.586,
+            "cash_balance": 1208813.4,
+            "runway_months": 35.6,
+            "net_contribution": 308813.4
+          },
+          {
+            "month": 7,
+            "paying_customers": 1757,
+            "active_free_users": 6552,
+            "mrr": 296054.5,
+            "infra_cost": 22034.8,
+            "support_cost": 98000.0,
+            "gross_margin": 0.5946,
+            "cash_balance": 1191963.1,
+            "runway_months": 70.7,
+            "net_contribution": 416963.1
+          },
+          {
+            "month": 8,
+            "paying_customers": 1901,
+            "active_free_users": 7095,
+            "mrr": 320318.5,
+            "infra_cost": 22659.25,
+            "support_cost": 105000.0,
+            "gross_margin": 0.6015,
+            "cash_balance": 1191752.35,
+            "runway_months": 5654.8,
+            "net_contribution": 541752.35
+          },
+          {
+            "month": 9,
+            "paying_customers": 2042,
+            "active_free_users": 7573,
+            "mrr": 344077.0,
+            "infra_cost": 23208.95,
+            "support_cost": 112000.0,
+            "gross_margin": 0.607,
+            "cash_balance": 1207750.4,
+            "runway_months": 999.0,
+            "net_contribution": 682750.4
+          },
+          {
+            "month": 10,
+            "paying_customers": 2180,
+            "active_free_users": 7994,
+            "mrr": 367330.0,
+            "infra_cost": 23693.1,
+            "support_cost": 119000.0,
+            "gross_margin": 0.6115,
+            "cash_balance": 1239517.3,
+            "runway_months": 999.0,
+            "net_contribution": 839517.3
+          },
+          {
+            "month": 11,
+            "paying_customers": 2315,
+            "active_free_users": 8364,
+            "mrr": 390077.5,
+            "infra_cost": 24118.6,
+            "support_cost": 126000.0,
+            "gross_margin": 0.6152,
+            "cash_balance": 1286606.2,
+            "runway_months": 999.0,
+            "net_contribution": 1011606.2
+          },
+          {
+            "month": 12,
+            "paying_customers": 2448,
+            "active_free_users": 8690,
+            "mrr": 412488.0,
+            "infra_cost": 24493.5,
+            "support_cost": 133000.0,
+            "gross_margin": 0.6182,
+            "cash_balance": 1348730.7,
+            "runway_months": 999.0,
+            "net_contribution": 1198730.7
+          },
+          {
+            "month": 13,
+            "paying_customers": 2578,
+            "active_free_users": 8977,
+            "mrr": 434393.0,
+            "infra_cost": 24823.55,
+            "support_cost": 140000.0,
+            "gross_margin": 0.6206,
+            "cash_balance": 1425430.15,
+            "runway_months": 999.0,
+            "net_contribution": 1400430.15
+          },
+          {
+            "month": 14,
+            "paying_customers": 2705,
+            "active_free_users": 9229,
+            "mrr": 455792.5,
+            "infra_cost": 25113.35,
+            "support_cost": 147000.0,
+            "gross_margin": 0.6224,
+            "cash_balance": 1516239.3,
+            "runway_months": 999.0,
+            "net_contribution": 1616239.3
+          },
+          {
+            "month": 15,
+            "paying_customers": 2829,
+            "active_free_users": 9451,
+            "mrr": 476686.5,
+            "infra_cost": 25368.65,
+            "support_cost": 154000.0,
+            "gross_margin": 0.6237,
+            "cash_balance": 1620687.15,
+            "runway_months": 999.0,
+            "net_contribution": 1845687.15
+          },
+          {
+            "month": 16,
+            "paying_customers": 2951,
+            "active_free_users": 9646,
+            "mrr": 497243.5,
+            "infra_cost": 25592.9,
+            "support_cost": 154000.0,
+            "gross_margin": 0.6388,
+            "cash_balance": 1745467.75,
+            "runway_months": 999.0,
+            "net_contribution": 2095467.75
+          },
+          {
+            "month": 17,
+            "paying_customers": 3070,
+            "active_free_users": 9818,
+            "mrr": 517295.0,
+            "infra_cost": 25790.7,
+            "support_cost": 161000.0,
+            "gross_margin": 0.6389,
+            "cash_balance": 1883102.05,
+            "runway_months": 999.0,
+            "net_contribution": 2358102.05
+          },
+          {
+            "month": 18,
+            "paying_customers": 3187,
+            "active_free_users": 9969,
+            "mrr": 537009.5,
+            "infra_cost": 25964.35,
+            "support_cost": 168000.0,
+            "gross_margin": 0.6388,
+            "cash_balance": 2033277.2,
+            "runway_months": 999.0,
+            "net_contribution": 2633277.2
+          },
+          {
+            "month": 19,
+            "paying_customers": 3301,
+            "active_free_users": 10102,
+            "mrr": 556218.5,
+            "infra_cost": 26117.3,
+            "support_cost": 175000.0,
+            "gross_margin": 0.6384,
+            "cash_balance": 2195508.4,
+            "runway_months": 999.0,
+            "net_contribution": 2920508.4
+          },
+          {
+            "month": 20,
+            "paying_customers": 3413,
+            "active_free_users": 10219,
+            "mrr": 575090.5,
+            "infra_cost": 26251.85,
+            "support_cost": 175000.0,
+            "gross_margin": 0.6501,
+            "cash_balance": 2376477.05,
+            "runway_months": 999.0,
+            "net_contribution": 3226477.05
+          },
+          {
+            "month": 21,
+            "paying_customers": 3523,
+            "active_free_users": 10322,
+            "mrr": 593625.5,
+            "infra_cost": 26370.3,
+            "support_cost": 182000.0,
+            "gross_margin": 0.649,
+            "cash_balance": 2568862.25,
+            "runway_months": 999.0,
+            "net_contribution": 3543862.25
+          },
+          {
+            "month": 22,
+            "paying_customers": 3630,
+            "active_free_users": 10413,
+            "mrr": 611655.0,
+            "infra_cost": 26474.95,
+            "support_cost": 189000.0,
+            "gross_margin": 0.6477,
+            "cash_balance": 2772172.3,
+            "runway_months": 999.0,
+            "net_contribution": 3872172.3
+          },
+          {
+            "month": 23,
+            "paying_customers": 3735,
+            "active_free_users": 10493,
+            "mrr": 629347.5,
+            "infra_cost": 26566.95,
+            "support_cost": 196000.0,
+            "gross_margin": 0.6464,
+            "cash_balance": 2986082.85,
+            "runway_months": 999.0,
+            "net_contribution": 4211082.85
+          },
+          {
+            "month": 24,
+            "paying_customers": 3838,
+            "active_free_users": 10563,
+            "mrr": 646703.0,
+            "infra_cost": 26647.45,
+            "support_cost": 196000.0,
+            "gross_margin": 0.6557,
+            "cash_balance": 3217268.4,
+            "runway_months": 999.0,
+            "net_contribution": 4567268.4
+          }
+        ]
+      },
+      "seed": 42
+    },
+    {
+      "id": "sim_a_opti_2e070f",
+      "strategy": "A_limited_features",
+      "scenario": "optimistic",
+      "parameters": {
+        "free_to_paid_conversion": 0.05,
+        "min_acceptable_runway_months": 12.0,
+        "monthly_free_signups": 5200.0,
+        "infra_cost_per_free_user": 0.75,
+        "paid_to_free_cannibalization": 0.04,
+        "activation_drop_from_gating": 0.2,
+        "paid_funnel_lift": 1.28,
+        "free_user_ticket_rate": 0.12
+      },
+      "outputs": {
+        "strategy": "A_limited_features",
+        "mrr_6": 394795.5,
+        "mrr_12": 645355.0,
+        "mrr_24": 1060033.5,
+        "net_contribution_6": 625612.75,
+        "net_contribution_12": 2316056.25,
+        "net_contribution_24": 8571661.0,
+        "runway_months_12": 999.0,
+        "gross_margin_12": 0.6492,
+        "support_headcount_12": 29,
+        "infra_cost_12": 23419.0,
+        "paying_customers_12": 3830,
+        "free_users_12": 11892,
+        "history": [
+          {
+            "month": 1,
+            "paying_customers": 952,
+            "active_free_users": 1819,
+            "mrr": 160412.0,
+            "infra_cost": 15864.25,
+            "support_cost": 49000.0,
+            "gross_margin": 0.5956,
+            "cash_balance": 1552677.75,
+            "runway_months": 16.0,
+            "net_contribution": 27677.75
+          },
+          {
+            "month": 2,
+            "paying_customers": 1242,
+            "active_free_users": 3420,
+            "mrr": 209277.0,
+            "infra_cost": 17065.0,
+            "support_cost": 63000.0,
+            "gross_margin": 0.6174,
+            "cash_balance": 1489019.75,
+            "runway_months": 23.4,
+            "net_contribution": 89019.75
+          },
+          {
+            "month": 3,
+            "paying_customers": 1526,
+            "active_free_users": 4829,
+            "mrr": 257131.0,
+            "infra_cost": 18121.75,
+            "support_cost": 84000.0,
+            "gross_margin": 0.6028,
+            "cash_balance": 1451159.0,
+            "runway_months": 38.3,
+            "net_contribution": 176159.0
+          },
+          {
+            "month": 4,
+            "paying_customers": 1804,
+            "active_free_users": 6069,
+            "mrr": 303974.0,
+            "infra_cost": 19051.75,
+            "support_cost": 98000.0,
+            "gross_margin": 0.6149,
+            "cash_balance": 1445211.25,
+            "runway_months": 243.0,
+            "net_contribution": 295211.25
+          },
+          {
+            "month": 5,
+            "paying_customers": 2076,
+            "active_free_users": 7160,
+            "mrr": 349806.0,
+            "infra_cost": 19870.0,
+            "support_cost": 112000.0,
+            "gross_margin": 0.623,
+            "cash_balance": 1470277.25,
+            "runway_months": 999.0,
+            "net_contribution": 445277.25
+          },
+          {
+            "month": 6,
+            "paying_customers": 2343,
+            "active_free_users": 8120,
+            "mrr": 394795.5,
+            "infra_cost": 20590.0,
+            "support_cost": 126000.0,
+            "gross_margin": 0.6287,
+            "cash_balance": 1525612.75,
+            "runway_months": 999.0,
+            "net_contribution": 625612.75
+          },
+          {
+            "month": 7,
+            "paying_customers": 2604,
+            "active_free_users": 8965,
+            "mrr": 438774.0,
+            "infra_cost": 21223.75,
+            "support_cost": 140000.0,
+            "gross_margin": 0.6326,
+            "cash_balance": 1610293.0,
+            "runway_months": 999.0,
+            "net_contribution": 835293.0
+          },
+          {
+            "month": 8,
+            "paying_customers": 2860,
+            "active_free_users": 9709,
+            "mrr": 481910.0,
+            "infra_cost": 21781.75,
+            "support_cost": 154000.0,
+            "gross_margin": 0.6352,
+            "cash_balance": 1723551.25,
+            "runway_months": 999.0,
+            "net_contribution": 1073551.25
+          },
+          {
+            "month": 9,
+            "paying_customers": 3110,
+            "active_free_users": 10363,
+            "mrr": 524035.0,
+            "infra_cost": 22272.25,
+            "support_cost": 168000.0,
+            "gross_margin": 0.6369,
+            "cash_balance": 1864444.0,
+            "runway_months": 999.0,
+            "net_contribution": 1339444.0
+          },
+          {
+            "month": 10,
+            "paying_customers": 3355,
+            "active_free_users": 10939,
+            "mrr": 565317.5,
+            "infra_cost": 22704.25,
+            "support_cost": 175000.0,
+            "gross_margin": 0.6503,
+            "cash_balance": 2039187.25,
+            "runway_months": 999.0,
+            "net_contribution": 1639187.25
+          },
+          {
+            "month": 11,
+            "paying_customers": 3595,
+            "active_free_users": 11446,
+            "mrr": 605757.5,
+            "infra_cost": 23084.5,
+            "support_cost": 189000.0,
+            "gross_margin": 0.6499,
+            "cash_balance": 2239990.25,
+            "runway_months": 999.0,
+            "net_contribution": 1964990.25
+          },
+          {
+            "month": 12,
+            "paying_customers": 3830,
+            "active_free_users": 11892,
+            "mrr": 645355.0,
+            "infra_cost": 23419.0,
+            "support_cost": 203000.0,
+            "gross_margin": 0.6492,
+            "cash_balance": 2466056.25,
+            "runway_months": 999.0,
+            "net_contribution": 2316056.25
+          },
+          {
+            "month": 13,
+            "paying_customers": 4060,
+            "active_free_users": 12284,
+            "mrr": 684110.0,
+            "infra_cost": 23713.0,
+            "support_cost": 210000.0,
+            "gross_margin": 0.6584,
+            "cash_balance": 2723583.25,
+            "runway_months": 999.0,
+            "net_contribution": 2698583.25
+          },
+          {
+            "month": 14,
+            "paying_customers": 4285,
+            "active_free_users": 12629,
+            "mrr": 722022.5,
+            "infra_cost": 23971.75,
+            "support_cost": 224000.0,
+            "gross_margin": 0.6566,
+            "cash_balance": 3004764.0,
+            "runway_months": 999.0,
+            "net_contribution": 3104764.0
+          },
+          {
+            "month": 15,
+            "paying_customers": 4505,
+            "active_free_users": 12933,
+            "mrr": 759092.5,
+            "infra_cost": 24199.75,
+            "support_cost": 231000.0,
+            "gross_margin": 0.6638,
+            "cash_balance": 3315786.75,
+            "runway_months": 999.0,
+            "net_contribution": 3540786.75
+          },
+          {
+            "month": 16,
+            "paying_customers": 4721,
+            "active_free_users": 13201,
+            "mrr": 795488.5,
+            "infra_cost": 24400.75,
+            "support_cost": 245000.0,
+            "gross_margin": 0.6613,
+            "cash_balance": 3649004.5,
+            "runway_months": 999.0,
+            "net_contribution": 3999004.5
+          },
+          {
+            "month": 17,
+            "paying_customers": 4932,
+            "active_free_users": 13436,
+            "mrr": 831042.0,
+            "infra_cost": 24577.0,
+            "support_cost": 252000.0,
+            "gross_margin": 0.6672,
+            "cash_balance": 4010599.5,
+            "runway_months": 999.0,
+            "net_contribution": 4485599.5
+          },
+          {
+            "month": 18,
+            "paying_customers": 5139,
+            "active_free_users": 13643,
+            "mrr": 865921.5,
+            "infra_cost": 24732.25,
+            "support_cost": 259000.0,
+            "gross_margin": 0.6723,
+            "cash_balance": 4399918.75,
+            "runway_months": 999.0,
+            "net_contribution": 4999918.75
+          },
+          {
+            "month": 19,
+            "paying_customers": 5341,
+            "active_free_users": 13825,
+            "mrr": 899958.5,
+            "infra_cost": 24868.75,
+            "support_cost": 273000.0,
+            "gross_margin": 0.669,
+            "cash_balance": 4809138.5,
+            "runway_months": 999.0,
+            "net_contribution": 5534138.5
+          },
+          {
+            "month": 20,
+            "paying_customers": 5539,
+            "active_free_users": 13986,
+            "mrr": 933321.5,
+            "infra_cost": 24989.5,
+            "support_cost": 280000.0,
+            "gross_margin": 0.6732,
+            "cash_balance": 5244600.5,
+            "runway_months": 999.0,
+            "net_contribution": 6094600.5
+          },
+          {
+            "month": 21,
+            "paying_customers": 5733,
+            "active_free_users": 14127,
+            "mrr": 966010.5,
+            "infra_cost": 25095.25,
+            "support_cost": 287000.0,
+            "gross_margin": 0.6769,
+            "cash_balance": 5705645.75,
+            "runway_months": 999.0,
+            "net_contribution": 6680645.75
+          },
+          {
+            "month": 22,
+            "paying_customers": 5923,
+            "active_free_users": 14251,
+            "mrr": 998025.5,
+            "infra_cost": 25188.25,
+            "support_cost": 294000.0,
+            "gross_margin": 0.6802,
+            "cash_balance": 6191613.0,
+            "runway_months": 999.0,
+            "net_contribution": 7291613.0
+          },
+          {
+            "month": 23,
+            "paying_customers": 6109,
+            "active_free_users": 14360,
+            "mrr": 1029366.5,
+            "infra_cost": 25270.0,
+            "support_cost": 308000.0,
+            "gross_margin": 0.6762,
+            "cash_balance": 6694839.5,
+            "runway_months": 999.0,
+            "net_contribution": 7919839.5
+          },
+          {
+            "month": 24,
+            "paying_customers": 6291,
+            "active_free_users": 14456,
+            "mrr": 1060033.5,
+            "infra_cost": 25342.0,
+            "support_cost": 315000.0,
+            "gross_margin": 0.6789,
+            "cash_balance": 7221661.0,
+            "runway_months": 999.0,
+            "net_contribution": 8571661.0
+          }
+        ]
+      },
+      "seed": 42
+    },
+    {
+      "id": "sim_a_stre_45dd6a",
+      "strategy": "A_limited_features",
+      "scenario": "stress_infra",
+      "parameters": {
+        "free_to_paid_conversion": 0.035,
+        "min_acceptable_runway_months": 10.0,
+        "monthly_free_signups": 3800.0,
+        "infra_cost_per_free_user": 3.7,
+        "paid_to_free_cannibalization": 0.08,
+        "activation_drop_from_gating": 0.1,
+        "paid_funnel_lift": 1.18,
+        "free_user_ticket_rate": 0.12
+      },
+      "outputs": {
+        "strategy": "A_limited_features",
+        "mrr_6": 271285.0,
+        "mrr_12": 412488.0,
+        "mrr_24": 646703.0,
+        "net_contribution_6": 250255.2,
+        "net_contribution_12": 1022189.1,
+        "net_contribution_24": 4086761.7,
+        "runway_months_12": 999.0,
+        "gross_margin_12": 0.5645,
+        "support_headcount_12": 19,
+        "infra_cost_12": 46653.0,
+        "paying_customers_12": 2448,
+        "free_users_12": 8690,
+        "history": [
+          {
+            "month": 1,
+            "paying_customers": 823,
+            "active_free_users": 1330,
+            "mrr": 138675.5,
+            "infra_cost": 19421.0,
+            "support_cost": 42000.0,
+            "gross_margin": 0.5571,
+            "cash_balance": 1534384.5,
+            "runway_months": 13.3,
+            "net_contribution": 9384.5
+          },
+          {
+            "month": 2,
+            "paying_customers": 987,
+            "active_free_users": 2500,
+            "mrr": 166309.5,
+            "infra_cost": 23750.0,
+            "support_cost": 56000.0,
+            "gross_margin": 0.5205,
+            "cash_balance": 1428074.0,
+            "runway_months": 13.4,
+            "net_contribution": 28074.0
+          },
+          {
+            "month": 3,
+            "paying_customers": 1148,
+            "active_free_users": 3530,
+            "mrr": 193438.0,
+            "infra_cost": 27561.0,
+            "support_cost": 63000.0,
+            "gross_margin": 0.5318,
+            "cash_balance": 1338081.0,
+            "runway_months": 14.9,
+            "net_contribution": 63081.0
+          },
+          {
+            "month": 4,
+            "paying_customers": 1305,
+            "active_free_users": 4436,
+            "mrr": 219892.5,
+            "infra_cost": 30913.2,
+            "support_cost": 70000.0,
+            "gross_margin": 0.5411,
+            "cash_balance": 1264190.3,
+            "runway_months": 17.1,
+            "net_contribution": 114190.3
+          },
+          {
+            "month": 5,
+            "paying_customers": 1459,
+            "active_free_users": 5233,
+            "mrr": 245841.5,
+            "infra_cost": 33862.1,
+            "support_cost": 84000.0,
+            "gross_margin": 0.5206,
+            "cash_balance": 1199299.7,
+            "runway_months": 18.5,
+            "net_contribution": 174299.7
+          },
+          {
+            "month": 6,
+            "paying_customers": 1610,
+            "active_free_users": 5935,
+            "mrr": 271285.0,
+            "infra_cost": 36459.5,
+            "support_cost": 91000.0,
+            "gross_margin": 0.5302,
+            "cash_balance": 1150255.2,
+            "runway_months": 23.5,
+            "net_contribution": 250255.2
+          },
+          {
+            "month": 7,
+            "paying_customers": 1757,
+            "active_free_users": 6552,
+            "mrr": 296054.5,
+            "infra_cost": 38742.4,
+            "support_cost": 98000.0,
+            "gross_margin": 0.5381,
+            "cash_balance": 1116697.3,
+            "runway_months": 33.3,
+            "net_contribution": 341697.3
+          },
+          {
+            "month": 8,
+            "paying_customers": 1901,
+            "active_free_users": 7095,
+            "mrr": 320318.5,
+            "infra_cost": 40751.5,
+            "support_cost": 105000.0,
+            "gross_margin": 0.545,
+            "cash_balance": 1098394.3,
+            "runway_months": 60.0,
+            "net_contribution": 448394.3
+          },
+          {
+            "month": 9,
+            "paying_customers": 2042,
+            "active_free_users": 7573,
+            "mrr": 344077.0,
+            "infra_cost": 42520.1,
+            "support_cost": 112000.0,
+            "gross_margin": 0.5509,
+            "cash_balance": 1095081.2,
+            "runway_months": 330.5,
+            "net_contribution": 570081.2
+          },
+          {
+            "month": 10,
+            "paying_customers": 2180,
+            "active_free_users": 7994,
+            "mrr": 367330.0,
+            "infra_cost": 44077.8,
+            "support_cost": 119000.0,
+            "gross_margin": 0.556,
+            "cash_balance": 1106463.4,
+            "runway_months": 999.0,
+            "net_contribution": 706463.4
+          },
+          {
+            "month": 11,
+            "paying_customers": 2315,
+            "active_free_users": 8364,
+            "mrr": 390077.5,
+            "infra_cost": 45446.8,
+            "support_cost": 126000.0,
+            "gross_margin": 0.5605,
+            "cash_balance": 1132224.1,
+            "runway_months": 999.0,
+            "net_contribution": 857224.1
+          },
+          {
+            "month": 12,
+            "paying_customers": 2448,
+            "active_free_users": 8690,
+            "mrr": 412488.0,
+            "infra_cost": 46653.0,
+            "support_cost": 133000.0,
+            "gross_margin": 0.5645,
+            "cash_balance": 1172189.1,
+            "runway_months": 999.0,
+            "net_contribution": 1022189.1
+          },
+          {
+            "month": 13,
+            "paying_customers": 2578,
+            "active_free_users": 8977,
+            "mrr": 434393.0,
+            "infra_cost": 47714.9,
+            "support_cost": 140000.0,
+            "gross_margin": 0.5679,
+            "cash_balance": 1225997.2,
+            "runway_months": 999.0,
+            "net_contribution": 1200997.2
+          },
+          {
+            "month": 14,
+            "paying_customers": 2705,
+            "active_free_users": 9229,
+            "mrr": 455792.5,
+            "infra_cost": 48647.3,
+            "support_cost": 147000.0,
+            "gross_margin": 0.5708,
+            "cash_balance": 1293272.4,
+            "runway_months": 999.0,
+            "net_contribution": 1393272.4
+          },
+          {
+            "month": 15,
+            "paying_customers": 2829,
+            "active_free_users": 9451,
+            "mrr": 476686.5,
+            "infra_cost": 49468.7,
+            "support_cost": 154000.0,
+            "gross_margin": 0.5732,
+            "cash_balance": 1373620.2,
+            "runway_months": 999.0,
+            "net_contribution": 1598620.2
+          },
+          {
+            "month": 16,
+            "paying_customers": 2951,
+            "active_free_users": 9646,
+            "mrr": 497243.5,
+            "infra_cost": 50190.2,
+            "support_cost": 154000.0,
+            "gross_margin": 0.5894,
+            "cash_balance": 1473803.5,
+            "runway_months": 999.0,
+            "net_contribution": 1823803.5
+          },
+          {
+            "month": 17,
+            "paying_customers": 3070,
+            "active_free_users": 9818,
+            "mrr": 517295.0,
+            "infra_cost": 50826.6,
+            "support_cost": 161000.0,
+            "gross_margin": 0.5905,
+            "cash_balance": 1586401.9,
+            "runway_months": 999.0,
+            "net_contribution": 2061401.9
+          },
+          {
+            "month": 18,
+            "paying_customers": 3187,
+            "active_free_users": 9969,
+            "mrr": 537009.5,
+            "infra_cost": 51385.3,
+            "support_cost": 168000.0,
+            "gross_margin": 0.5915,
+            "cash_balance": 1711156.1,
+            "runway_months": 999.0,
+            "net_contribution": 2311156.1
+          },
+          {
+            "month": 19,
+            "paying_customers": 3301,
+            "active_free_users": 10102,
+            "mrr": 556218.5,
+            "infra_cost": 51877.4,
+            "support_cost": 175000.0,
+            "gross_margin": 0.5921,
+            "cash_balance": 1847627.2,
+            "runway_months": 999.0,
+            "net_contribution": 2572627.2
+          },
+          {
+            "month": 20,
+            "paying_customers": 3413,
+            "active_free_users": 10219,
+            "mrr": 575090.5,
+            "infra_cost": 52310.3,
+            "support_cost": 175000.0,
+            "gross_margin": 0.6047,
+            "cash_balance": 2002537.4,
+            "runway_months": 999.0,
+            "net_contribution": 2852537.4
+          },
+          {
+            "month": 21,
+            "paying_customers": 3523,
+            "active_free_users": 10322,
+            "mrr": 593625.5,
+            "infra_cost": 52691.4,
+            "support_cost": 182000.0,
+            "gross_margin": 0.6046,
+            "cash_balance": 2168601.5,
+            "runway_months": 999.0,
+            "net_contribution": 3143601.5
+          },
+          {
+            "month": 22,
+            "paying_customers": 3630,
+            "active_free_users": 10413,
+            "mrr": 611655.0,
+            "infra_cost": 53028.1,
+            "support_cost": 189000.0,
+            "gross_margin": 0.6043,
+            "cash_balance": 2345358.4,
+            "runway_months": 999.0,
+            "net_contribution": 3445358.4
+          },
+          {
+            "month": 23,
+            "paying_customers": 3735,
+            "active_free_users": 10493,
+            "mrr": 629347.5,
+            "infra_cost": 53324.1,
+            "support_cost": 196000.0,
+            "gross_margin": 0.6038,
+            "cash_balance": 2532511.8,
+            "runway_months": 999.0,
+            "net_contribution": 3757511.8
+          },
+          {
+            "month": 24,
+            "paying_customers": 3838,
+            "active_free_users": 10563,
+            "mrr": 646703.0,
+            "infra_cost": 53583.1,
+            "support_cost": 196000.0,
+            "gross_margin": 0.6141,
+            "cash_balance": 2736761.7,
+            "runway_months": 999.0,
+            "net_contribution": 4086761.7
+          }
+        ]
+      },
+      "seed": 42
+    },
+    {
+      "id": "sim_b_cons_2b35be",
+      "strategy": "B_usage_caps",
+      "scenario": "conservative",
+      "parameters": {
+        "free_to_paid_conversion": 0.025,
+        "min_acceptable_runway_months": 8.0,
+        "monthly_free_signups": 2500.0,
+        "infra_cost_per_free_user": 1.85,
+        "paid_to_free_cannibalization": 0.15,
+        "activation_drop_from_gating": 0.05,
+        "paid_funnel_lift": 1.08,
+        "free_user_ticket_rate": 0.12
+      },
+      "outputs": {
+        "strategy": "B_usage_caps",
+        "mrr_6": 213489.5,
+        "mrr_12": 304479.5,
+        "mrr_24": 454613.0,
+        "net_contribution_6": 215645.74,
+        "net_contribution_12": 814130.76,
+        "net_contribution_24": 3062181.31,
+        "runway_months_12": 1262.0,
+        "gross_margin_12": 0.6309,
+        "support_headcount_12": 13,
+        "infra_cost_12": 21373.49,
+        "paying_customers_12": 1807,
+        "free_users_12": 5716,
+        "history": [
+          {
+            "month": 1,
+            "paying_customers": 762,
+            "active_free_users": 875,
+            "mrr": 128397.0,
+            "infra_cost": 15552.19,
+            "support_cost": 35000.0,
+            "gross_margin": 0.6063,
+            "cash_balance": 1534974.81,
+            "runway_months": 13.3,
+            "net_contribution": 9974.81
+          },
+          {
+            "month": 2,
+            "paying_customers": 867,
+            "active_free_users": 1645,
+            "mrr": 146089.5,
+            "infra_cost": 16478.11,
+            "support_cost": 42000.0,
+            "gross_margin": 0.5997,
+            "cash_balance": 1429716.2,
+            "runway_months": 13.6,
+            "net_contribution": 29716.2
+          },
+          {
+            "month": 3,
+            "paying_customers": 970,
+            "active_free_users": 2322,
+            "mrr": 163445.0,
+            "infra_cost": 17292.21,
+            "support_cost": 49000.0,
+            "gross_margin": 0.5944,
+            "cash_balance": 1333998.99,
+            "runway_months": 13.9,
+            "net_contribution": 58998.99
+          },
+          {
+            "month": 4,
+            "paying_customers": 1071,
+            "active_free_users": 2918,
+            "mrr": 180463.5,
+            "infra_cost": 18008.9,
+            "support_cost": 56000.0,
+            "gross_margin": 0.5899,
+            "cash_balance": 1247583.6,
+            "runway_months": 14.4,
+            "net_contribution": 97583.6
+          },
+          {
+            "month": 5,
+            "paying_customers": 1170,
+            "active_free_users": 3442,
+            "mrr": 197145.0,
+            "infra_cost": 18639.01,
+            "support_cost": 56000.0,
+            "gross_margin": 0.6214,
+            "cash_balance": 1177219.59,
+            "runway_months": 16.7,
+            "net_contribution": 152219.59
+          },
+          {
+            "month": 6,
+            "paying_customers": 1267,
+            "active_free_users": 3903,
+            "mrr": 213489.5,
+            "infra_cost": 19193.36,
+            "support_cost": 63000.0,
+            "gross_margin": 0.615,
+            "cash_balance": 1115645.74,
+            "runway_months": 18.1,
+            "net_contribution": 215645.74
+          },
+          {
+            "month": 7,
+            "paying_customers": 1362,
+            "active_free_users": 4309,
+            "mrr": 229497.0,
+            "infra_cost": 19681.57,
+            "support_cost": 70000.0,
+            "gross_margin": 0.6092,
+            "cash_balance": 1062591.16,
+            "runway_months": 20.0,
+            "net_contribution": 287591.16
+          },
+          {
+            "month": 8,
+            "paying_customers": 1455,
+            "active_free_users": 4666,
+            "mrr": 245167.5,
+            "infra_cost": 20110.87,
+            "support_cost": 70000.0,
+            "gross_margin": 0.6325,
+            "cash_balance": 1024777.8,
+            "runway_months": 27.1,
+            "net_contribution": 374777.8
+          },
+          {
+            "month": 9,
+            "paying_customers": 1546,
+            "active_free_users": 4981,
+            "mrr": 260501.0,
+            "infra_cost": 20489.65,
+            "support_cost": 77000.0,
+            "gross_margin": 0.6258,
+            "cash_balance": 994919.15,
+            "runway_months": 33.3,
+            "net_contribution": 469919.15
+          },
+          {
+            "month": 10,
+            "paying_customers": 1635,
+            "active_free_users": 5258,
+            "mrr": 275497.5,
+            "infra_cost": 20822.75,
+            "support_cost": 84000.0,
+            "gross_margin": 0.6195,
+            "cash_balance": 972723.9,
+            "runway_months": 43.8,
+            "net_contribution": 572723.9
+          },
+          {
+            "month": 11,
+            "paying_customers": 1722,
+            "active_free_users": 5502,
+            "mrr": 290157.0,
+            "infra_cost": 21116.15,
+            "support_cost": 84000.0,
+            "gross_margin": 0.6377,
+            "cash_balance": 964894.75,
+            "runway_months": 123.2,
+            "net_contribution": 689894.75
+          },
+          {
+            "month": 12,
+            "paying_customers": 1807,
+            "active_free_users": 5716,
+            "mrr": 304479.5,
+            "infra_cost": 21373.49,
+            "support_cost": 91000.0,
+            "gross_margin": 0.6309,
+            "cash_balance": 964130.76,
+            "runway_months": 1262.0,
+            "net_contribution": 814130.76
+          },
+          {
+            "month": 13,
+            "paying_customers": 1890,
+            "active_free_users": 5905,
+            "mrr": 318465.0,
+            "infra_cost": 21600.76,
+            "support_cost": 91000.0,
+            "gross_margin": 0.6464,
+            "cash_balance": 977124.99,
+            "runway_months": 999.0,
+            "net_contribution": 952124.99
+          },
+          {
+            "month": 14,
+            "paying_customers": 1972,
+            "active_free_users": 6071,
+            "mrr": 332282.0,
+            "infra_cost": 21800.38,
+            "support_cost": 98000.0,
+            "gross_margin": 0.6395,
+            "cash_balance": 996736.62,
+            "runway_months": 999.0,
+            "net_contribution": 1096736.62
+          },
+          {
+            "month": 15,
+            "paying_customers": 2052,
+            "active_free_users": 6217,
+            "mrr": 345762.0,
+            "infra_cost": 21975.94,
+            "support_cost": 98000.0,
+            "gross_margin": 0.653,
+            "cash_balance": 1029652.67,
+            "runway_months": 999.0,
+            "net_contribution": 1254652.67
+          },
+          {
+            "month": 16,
+            "paying_customers": 2130,
+            "active_free_users": 6345,
+            "mrr": 358905.0,
+            "infra_cost": 22129.86,
+            "support_cost": 105000.0,
+            "gross_margin": 0.6458,
+            "cash_balance": 1068557.81,
+            "runway_months": 999.0,
+            "net_contribution": 1418557.81
+          },
+          {
+            "month": 17,
+            "paying_customers": 2206,
+            "active_free_users": 6458,
+            "mrr": 371711.0,
+            "infra_cost": 22265.75,
+            "support_cost": 105000.0,
+            "gross_margin": 0.6576,
+            "cash_balance": 1120133.07,
+            "runway_months": 999.0,
+            "net_contribution": 1595133.07
+          },
+          {
+            "month": 18,
+            "paying_customers": 2281,
+            "active_free_users": 6558,
+            "mrr": 384348.5,
+            "infra_cost": 22386.0,
+            "support_cost": 112000.0,
+            "gross_margin": 0.6504,
+            "cash_balance": 1177225.57,
+            "runway_months": 999.0,
+            "net_contribution": 1777225.57
+          },
+          {
+            "month": 19,
+            "paying_customers": 2354,
+            "active_free_users": 6646,
+            "mrr": 396649.0,
+            "infra_cost": 22491.82,
+            "support_cost": 112000.0,
+            "gross_margin": 0.6609,
+            "cash_balance": 1246512.76,
+            "runway_months": 999.0,
+            "net_contribution": 1971512.76
+          },
+          {
+            "month": 20,
+            "paying_customers": 2426,
+            "active_free_users": 6723,
+            "mrr": 408781.0,
+            "infra_cost": 22584.41,
+            "support_cost": 119000.0,
+            "gross_margin": 0.6536,
+            "cash_balance": 1320839.35,
+            "runway_months": 999.0,
+            "net_contribution": 2170839.35
+          },
+          {
+            "month": 21,
+            "paying_customers": 2496,
+            "active_free_users": 6791,
+            "mrr": 420576.0,
+            "infra_cost": 22666.18,
+            "support_cost": 119000.0,
+            "gross_margin": 0.6632,
+            "cash_balance": 1406879.17,
+            "runway_months": 999.0,
+            "net_contribution": 2381879.17
+          },
+          {
+            "month": 22,
+            "paying_customers": 2565,
+            "active_free_users": 6851,
+            "mrr": 432202.5,
+            "infra_cost": 22738.33,
+            "support_cost": 126000.0,
+            "gross_margin": 0.6559,
+            "cash_balance": 1497473.34,
+            "runway_months": 999.0,
+            "net_contribution": 2597473.34
+          },
+          {
+            "month": 23,
+            "paying_customers": 2632,
+            "active_free_users": 6903,
+            "mrr": 443492.0,
+            "infra_cost": 22800.86,
+            "support_cost": 126000.0,
+            "gross_margin": 0.6645,
+            "cash_balance": 1599294.49,
+            "runway_months": 999.0,
+            "net_contribution": 2824294.49
+          },
+          {
+            "month": 24,
+            "paying_customers": 2698,
+            "active_free_users": 6949,
+            "mrr": 454613.0,
+            "infra_cost": 22856.17,
+            "support_cost": 126000.0,
+            "gross_margin": 0.6726,
+            "cash_balance": 1712181.31,
+            "runway_months": 999.0,
+            "net_contribution": 3062181.31
+          }
+        ]
+      },
+      "seed": 42
+    },
+    {
+      "id": "sim_b_expe_756fb6",
+      "strategy": "B_usage_caps",
+      "scenario": "expected",
+      "parameters": {
+        "free_to_paid_conversion": 0.035,
+        "min_acceptable_runway_months": 10.0,
+        "monthly_free_signups": 3800.0,
+        "infra_cost_per_free_user": 1.15,
+        "paid_to_free_cannibalization": 0.08,
+        "activation_drop_from_gating": 0.1,
+        "paid_funnel_lift": 1.18,
+        "free_user_ticket_rate": 0.12
+      },
+      "outputs": {
+        "strategy": "B_usage_caps",
+        "mrr_6": 292684.5,
+        "mrr_12": 453096.5,
+        "mrr_24": 718652.5,
+        "net_contribution_6": 415049.91,
+        "net_contribution_12": 1527735.08,
+        "net_contribution_24": 5635515.58,
+        "runway_months_12": 999.0,
+        "gross_margin_12": 0.6601,
+        "support_headcount_12": 19,
+        "infra_cost_12": 20995.78,
+        "paying_customers_12": 2689,
+        "free_users_12": 8690,
+        "history": [
+          {
+            "month": 1,
+            "paying_customers": 845,
+            "active_free_users": 1330,
+            "mrr": 142382.5,
+            "infra_cost": 15494.17,
+            "support_cost": 42000.0,
+            "gross_margin": 0.5962,
+            "cash_balance": 1542018.32,
+            "runway_months": 14.3,
+            "net_contribution": 17018.32
+          },
+          {
+            "month": 2,
+            "paying_customers": 1031,
+            "active_free_users": 2500,
+            "mrr": 173723.5,
+            "infra_cost": 16368.75,
+            "support_cost": 49000.0,
+            "gross_margin": 0.6237,
+            "cash_balance": 1457503.07,
+            "runway_months": 17.2,
+            "net_contribution": 57503.07
+          },
+          {
+            "month": 3,
+            "paying_customers": 1213,
+            "active_free_users": 3530,
+            "mrr": 204390.5,
+            "infra_cost": 17138.67,
+            "support_cost": 63000.0,
+            "gross_margin": 0.6079,
+            "cash_balance": 1388884.9,
+            "runway_months": 20.2,
+            "net_contribution": 113884.9
+          },
+          {
+            "month": 4,
+            "paying_customers": 1391,
+            "active_free_users": 4436,
+            "mrr": 234383.5,
+            "infra_cost": 17815.91,
+            "support_cost": 70000.0,
+            "gross_margin": 0.6253,
+            "cash_balance": 1342582.49,
+            "runway_months": 29.0,
+            "net_contribution": 192582.49
+          },
+          {
+            "month": 5,
+            "paying_customers": 1566,
+            "active_free_users": 5233,
+            "mrr": 263871.0,
+            "infra_cost": 18411.67,
+            "support_cost": 77000.0,
+            "gross_margin": 0.6384,
+            "cash_balance": 1318171.82,
+            "runway_months": 54.0,
+            "net_contribution": 293171.82
+          },
+          {
+            "month": 6,
+            "paying_customers": 1737,
+            "active_free_users": 5935,
+            "mrr": 292684.5,
+            "infra_cost": 18936.41,
+            "support_cost": 84000.0,
+            "gross_margin": 0.6483,
+            "cash_balance": 1315049.91,
+            "runway_months": 421.2,
+            "net_contribution": 415049.91
+          },
+          {
+            "month": 7,
+            "paying_customers": 1904,
+            "active_free_users": 6552,
+            "mrr": 320824.0,
+            "infra_cost": 19397.62,
+            "support_cost": 91000.0,
+            "gross_margin": 0.6559,
+            "cash_balance": 1332606.29,
+            "runway_months": 999.0,
+            "net_contribution": 557606.29
+          },
+          {
+            "month": 8,
+            "paying_customers": 2068,
+            "active_free_users": 7095,
+            "mrr": 348458.0,
+            "infra_cost": 19803.51,
+            "support_cost": 105000.0,
+            "gross_margin": 0.6418,
+            "cash_balance": 1363390.78,
+            "runway_months": 999.0,
+            "net_contribution": 713390.78
+          },
+          {
+            "month": 9,
+            "paying_customers": 2228,
+            "active_free_users": 7573,
+            "mrr": 375418.0,
+            "infra_cost": 20160.82,
+            "support_cost": 112000.0,
+            "gross_margin": 0.648,
+            "cash_balance": 1413777.96,
+            "runway_months": 999.0,
+            "net_contribution": 888777.96
+          },
+          {
+            "month": 10,
+            "paying_customers": 2385,
+            "active_free_users": 7994,
+            "mrr": 401872.5,
+            "infra_cost": 20475.51,
+            "support_cost": 119000.0,
+            "gross_margin": 0.6529,
+            "cash_balance": 1483304.94,
+            "runway_months": 999.0,
+            "net_contribution": 1083304.95
+          },
+          {
+            "month": 11,
+            "paying_customers": 2539,
+            "active_free_users": 8364,
+            "mrr": 427821.5,
+            "infra_cost": 20752.09,
+            "support_cost": 126000.0,
+            "gross_margin": 0.657,
+            "cash_balance": 1571504.35,
+            "runway_months": 999.0,
+            "net_contribution": 1296504.35
+          },
+          {
+            "month": 12,
+            "paying_customers": 2689,
+            "active_free_users": 8690,
+            "mrr": 453096.5,
+            "infra_cost": 20995.78,
+            "support_cost": 133000.0,
+            "gross_margin": 0.6601,
+            "cash_balance": 1677735.08,
+            "runway_months": 999.0,
+            "net_contribution": 1527735.08
+          },
+          {
+            "month": 13,
+            "paying_customers": 2836,
+            "active_free_users": 8977,
+            "mrr": 477866.0,
+            "infra_cost": 21210.31,
+            "support_cost": 140000.0,
+            "gross_margin": 0.6626,
+            "cash_balance": 1801520.77,
+            "runway_months": 999.0,
+            "net_contribution": 1776520.77
+          },
+          {
+            "month": 14,
+            "paying_customers": 2980,
+            "active_free_users": 9229,
+            "mrr": 502130.0,
+            "infra_cost": 21398.68,
+            "support_cost": 147000.0,
+            "gross_margin": 0.6646,
+            "cash_balance": 1942382.09,
+            "runway_months": 999.0,
+            "net_contribution": 2042382.09
+          },
+          {
+            "month": 15,
+            "paying_customers": 3121,
+            "active_free_users": 9451,
+            "mrr": 525888.5,
+            "infra_cost": 21564.62,
+            "support_cost": 147000.0,
+            "gross_margin": 0.6795,
+            "cash_balance": 2106835.97,
+            "runway_months": 999.0,
+            "net_contribution": 2331835.97
+          },
+          {
+            "month": 16,
+            "paying_customers": 3259,
+            "active_free_users": 9646,
+            "mrr": 549141.5,
+            "infra_cost": 21710.38,
+            "support_cost": 154000.0,
+            "gross_margin": 0.68,
+            "cash_balance": 2287397.09,
+            "runway_months": 999.0,
+            "net_contribution": 2637397.09
+          },
+          {
+            "month": 17,
+            "paying_customers": 3394,
+            "active_free_users": 9818,
+            "mrr": 571889.0,
+            "infra_cost": 21838.95,
+            "support_cost": 161000.0,
+            "gross_margin": 0.6803,
+            "cash_balance": 2483577.13,
+            "runway_months": 999.0,
+            "net_contribution": 2958577.13
+          },
+          {
+            "month": 18,
+            "paying_customers": 3526,
+            "active_free_users": 9969,
+            "mrr": 594131.0,
+            "infra_cost": 21951.83,
+            "support_cost": 168000.0,
+            "gross_margin": 0.6803,
+            "cash_balance": 2694886.3,
+            "runway_months": 999.0,
+            "net_contribution": 3294886.31
+          },
+          {
+            "month": 19,
+            "paying_customers": 3656,
+            "active_free_users": 10102,
+            "mrr": 616036.0,
+            "infra_cost": 22051.24,
+            "support_cost": 175000.0,
+            "gross_margin": 0.6801,
+            "cash_balance": 2921001.06,
+            "runway_months": 999.0,
+            "net_contribution": 3646001.06
+          },
+          {
+            "month": 20,
+            "paying_customers": 3783,
+            "active_free_users": 10219,
+            "mrr": 637435.5,
+            "infra_cost": 22138.7,
+            "support_cost": 182000.0,
+            "gross_margin": 0.6798,
+            "cash_balance": 3161427.86,
+            "runway_months": 999.0,
+            "net_contribution": 4011427.86
+          },
+          {
+            "month": 21,
+            "paying_customers": 3907,
+            "active_free_users": 10322,
+            "mrr": 658329.5,
+            "infra_cost": 22215.69,
+            "support_cost": 182000.0,
+            "gross_margin": 0.6898,
+            "cash_balance": 3422671.66,
+            "runway_months": 999.0,
+            "net_contribution": 4397671.66
+          },
+          {
+            "month": 22,
+            "paying_customers": 4029,
+            "active_free_users": 10413,
+            "mrr": 678886.5,
+            "infra_cost": 22283.72,
+            "support_cost": 189000.0,
+            "gross_margin": 0.6888,
+            "cash_balance": 3697404.44,
+            "runway_months": 999.0,
+            "net_contribution": 4797404.44
+          },
+          {
+            "month": 23,
+            "paying_customers": 4148,
+            "active_free_users": 10493,
+            "mrr": 698938.0,
+            "infra_cost": 22343.52,
+            "support_cost": 196000.0,
+            "gross_margin": 0.6876,
+            "cash_balance": 3985128.93,
+            "runway_months": 999.0,
+            "net_contribution": 5210128.93
+          },
+          {
+            "month": 24,
+            "paying_customers": 4265,
+            "active_free_users": 10563,
+            "mrr": 718652.5,
+            "infra_cost": 22395.84,
+            "support_cost": 203000.0,
+            "gross_margin": 0.6864,
+            "cash_balance": 4285515.58,
+            "runway_months": 999.0,
+            "net_contribution": 5635515.58
+          }
+        ]
+      },
+      "seed": 42
+    },
+    {
+      "id": "sim_b_opti_2a2439",
+      "strategy": "B_usage_caps",
+      "scenario": "optimistic",
+      "parameters": {
+        "free_to_paid_conversion": 0.05,
+        "min_acceptable_runway_months": 12.0,
+        "monthly_free_signups": 5200.0,
+        "infra_cost_per_free_user": 0.75,
+        "paid_to_free_cannibalization": 0.04,
+        "activation_drop_from_gating": 0.2,
+        "paid_funnel_lift": 1.28,
+        "free_user_ticket_rate": 0.12
+      },
+      "outputs": {
+        "strategy": "B_usage_caps",
+        "mrr_6": 433550.5,
+        "mrr_12": 717810.0,
+        "mrr_24": 1188767.5,
+        "net_contribution_6": 772029.71,
+        "net_contribution_12": 2831426.64,
+        "net_contribution_24": 10294606.77,
+        "runway_months_12": 999.0,
+        "gross_margin_12": 0.6889,
+        "support_headcount_12": 29,
+        "infra_cost_12": 20297.35,
+        "paying_customers_12": 4260,
+        "free_users_12": 11892,
+        "history": [
+          {
+            "month": 1,
+            "paying_customers": 992,
+            "active_free_users": 1819,
+            "mrr": 167152.0,
+            "infra_cost": 15386.76,
+            "support_cost": 49000.0,
+            "gross_margin": 0.6148,
+            "cash_balance": 1559895.24,
+            "runway_months": 17.3,
+            "net_contribution": 34895.24
+          },
+          {
+            "month": 2,
+            "paying_customers": 1322,
+            "active_free_users": 3420,
+            "mrr": 222757.0,
+            "infra_cost": 16167.25,
+            "support_cost": 63000.0,
+            "gross_margin": 0.6446,
+            "cash_balance": 1510614.99,
+            "runway_months": 30.7,
+            "net_contribution": 110614.99
+          },
+          {
+            "month": 3,
+            "paying_customers": 1645,
+            "active_free_users": 4829,
+            "mrr": 277182.5,
+            "infra_cost": 16854.14,
+            "support_cost": 84000.0,
+            "gross_margin": 0.6361,
+            "cash_balance": 1494073.35,
+            "runway_months": 90.3,
+            "net_contribution": 219073.35
+          },
+          {
+            "month": 4,
+            "paying_customers": 1961,
+            "active_free_users": 6069,
+            "mrr": 330428.5,
+            "infra_cost": 17458.64,
+            "support_cost": 98000.0,
+            "gross_margin": 0.6506,
+            "cash_balance": 1516173.21,
+            "runway_months": 999.0,
+            "net_contribution": 366173.21
+          },
+          {
+            "month": 5,
+            "paying_customers": 2270,
+            "active_free_users": 7160,
+            "mrr": 382495.0,
+            "infra_cost": 17990.5,
+            "support_cost": 112000.0,
+            "gross_margin": 0.6602,
+            "cash_balance": 1575807.71,
+            "runway_months": 999.0,
+            "net_contribution": 550807.71
+          },
+          {
+            "month": 6,
+            "paying_customers": 2573,
+            "active_free_users": 8120,
+            "mrr": 433550.5,
+            "infra_cost": 18458.5,
+            "support_cost": 126000.0,
+            "gross_margin": 0.6668,
+            "cash_balance": 1672029.71,
+            "runway_months": 999.0,
+            "net_contribution": 772029.71
+          },
+          {
+            "month": 7,
+            "paying_customers": 2869,
+            "active_free_users": 8965,
+            "mrr": 483426.5,
+            "infra_cost": 18870.44,
+            "support_cost": 140000.0,
+            "gross_margin": 0.6714,
+            "cash_balance": 1803715.78,
+            "runway_months": 999.0,
+            "net_contribution": 1028715.77
+          },
+          {
+            "month": 8,
+            "paying_customers": 3159,
+            "active_free_users": 9709,
+            "mrr": 532291.5,
+            "infra_cost": 19233.14,
+            "support_cost": 154000.0,
+            "gross_margin": 0.6746,
+            "cash_balance": 1969904.14,
+            "runway_months": 999.0,
+            "net_contribution": 1319904.14
+          },
+          {
+            "month": 9,
+            "paying_customers": 3443,
+            "active_free_users": 10363,
+            "mrr": 580145.5,
+            "infra_cost": 19551.96,
+            "support_cost": 168000.0,
+            "gross_margin": 0.6767,
+            "cash_balance": 2169627.68,
+            "runway_months": 999.0,
+            "net_contribution": 1644627.67
+          },
+          {
+            "month": 10,
+            "paying_customers": 3721,
+            "active_free_users": 10939,
+            "mrr": 626988.5,
+            "infra_cost": 19832.76,
+            "support_cost": 175000.0,
+            "gross_margin": 0.6893,
+            "cash_balance": 2408913.41,
+            "runway_months": 999.0,
+            "net_contribution": 2008913.41
+          },
+          {
+            "month": 11,
+            "paying_customers": 3993,
+            "active_free_users": 11446,
+            "mrr": 672820.5,
+            "infra_cost": 20079.92,
+            "support_cost": 189000.0,
+            "gross_margin": 0.6892,
+            "cash_balance": 2679783.99,
+            "runway_months": 999.0,
+            "net_contribution": 2404783.99
+          },
+          {
+            "month": 12,
+            "paying_customers": 4260,
+            "active_free_users": 11892,
+            "mrr": 717810.0,
+            "infra_cost": 20297.35,
+            "support_cost": 203000.0,
+            "gross_margin": 0.6889,
+            "cash_balance": 2981426.64,
+            "runway_months": 999.0,
+            "net_contribution": 2831426.64
+          },
+          {
+            "month": 13,
+            "paying_customers": 4521,
+            "active_free_users": 12284,
+            "mrr": 761788.5,
+            "infra_cost": 20488.45,
+            "support_cost": 217000.0,
+            "gross_margin": 0.6882,
+            "cash_balance": 3312856.69,
+            "runway_months": 999.0,
+            "net_contribution": 3287856.69
+          },
+          {
+            "month": 14,
+            "paying_customers": 4776,
+            "active_free_users": 12629,
+            "mrr": 804756.0,
+            "infra_cost": 20656.64,
+            "support_cost": 224000.0,
+            "gross_margin": 0.696,
+            "cash_balance": 3680086.05,
+            "runway_months": 999.0,
+            "net_contribution": 3780086.05
+          },
+          {
+            "month": 15,
+            "paying_customers": 5026,
+            "active_free_users": 12933,
+            "mrr": 846881.0,
+            "infra_cost": 20804.84,
+            "support_cost": 238000.0,
+            "gross_margin": 0.6944,
+            "cash_balance": 4075292.21,
+            "runway_months": 999.0,
+            "net_contribution": 4300292.21
+          },
+          {
+            "month": 16,
+            "paying_customers": 5271,
+            "active_free_users": 13201,
+            "mrr": 888163.5,
+            "infra_cost": 20935.49,
+            "support_cost": 245000.0,
+            "gross_margin": 0.7006,
+            "cash_balance": 4504650.23,
+            "runway_months": 999.0,
+            "net_contribution": 4854650.22
+          },
+          {
+            "month": 17,
+            "paying_customers": 5511,
+            "active_free_users": 13436,
+            "mrr": 928603.5,
+            "infra_cost": 21050.05,
+            "support_cost": 259000.0,
+            "gross_margin": 0.6984,
+            "cash_balance": 4960333.68,
+            "runway_months": 999.0,
+            "net_contribution": 5435333.67
+          },
+          {
+            "month": 18,
+            "paying_customers": 5746,
+            "active_free_users": 13643,
+            "mrr": 968201.0,
+            "infra_cost": 21150.96,
+            "support_cost": 266000.0,
+            "gross_margin": 0.7034,
+            "cash_balance": 5448513.71,
+            "runway_months": 999.0,
+            "net_contribution": 6048513.71
+          },
+          {
+            "month": 19,
+            "paying_customers": 5976,
+            "active_free_users": 13825,
+            "mrr": 1006956.0,
+            "infra_cost": 21239.69,
+            "support_cost": 280000.0,
+            "gross_margin": 0.7008,
+            "cash_balance": 5961360.03,
+            "runway_months": 999.0,
+            "net_contribution": 6686360.02
+          },
+          {
+            "month": 20,
+            "paying_customers": 6201,
+            "active_free_users": 13986,
+            "mrr": 1044868.5,
+            "infra_cost": 21318.17,
+            "support_cost": 287000.0,
+            "gross_margin": 0.7049,
+            "cash_balance": 6505040.35,
+            "runway_months": 999.0,
+            "net_contribution": 7355040.35
+          },
+          {
+            "month": 21,
+            "paying_customers": 6421,
+            "active_free_users": 14127,
+            "mrr": 1081938.5,
+            "infra_cost": 21386.91,
+            "support_cost": 301000.0,
+            "gross_margin": 0.702,
+            "cash_balance": 7071721.94,
+            "runway_months": 999.0,
+            "net_contribution": 8046721.94
+          },
+          {
+            "month": 22,
+            "paying_customers": 6637,
+            "active_free_users": 14251,
+            "mrr": 1118334.5,
+            "infra_cost": 21447.36,
+            "support_cost": 308000.0,
+            "gross_margin": 0.7054,
+            "cash_balance": 7667739.08,
+            "runway_months": 999.0,
+            "net_contribution": 8767739.07
+          },
+          {
+            "month": 23,
+            "paying_customers": 6848,
+            "active_free_users": 14360,
+            "mrr": 1153888.0,
+            "infra_cost": 21500.5,
+            "support_cost": 315000.0,
+            "gross_margin": 0.7084,
+            "cash_balance": 8292256.58,
+            "runway_months": 999.0,
+            "net_contribution": 9517256.57
+          },
+          {
+            "month": 24,
+            "paying_customers": 7055,
+            "active_free_users": 14456,
+            "mrr": 1188767.5,
+            "infra_cost": 21547.3,
+            "support_cost": 322000.0,
+            "gross_margin": 0.711,
+            "cash_balance": 8944606.78,
+            "runway_months": 999.0,
+            "net_contribution": 10294606.77
+          }
+        ]
+      },
+      "seed": 42
+    },
+    {
+      "id": "sim_b_stre_f49854",
+      "strategy": "B_usage_caps",
+      "scenario": "stress_infra",
+      "parameters": {
+        "free_to_paid_conversion": 0.035,
+        "min_acceptable_runway_months": 10.0,
+        "monthly_free_signups": 3800.0,
+        "infra_cost_per_free_user": 3.7,
+        "paid_to_free_cannibalization": 0.08,
+        "activation_drop_from_gating": 0.1,
+        "paid_funnel_lift": 1.18,
+        "free_user_ticket_rate": 0.12
+      },
+      "outputs": {
+        "strategy": "B_usage_caps",
+        "mrr_6": 292684.5,
+        "mrr_12": 453096.5,
+        "mrr_24": 718652.5,
+        "net_contribution_6": 376987.08,
+        "net_contribution_12": 1412983.04,
+        "net_contribution_24": 5323186.23,
+        "runway_months_12": 999.0,
+        "gross_margin_12": 0.6283,
+        "support_headcount_12": 19,
+        "infra_cost_12": 35399.45,
+        "paying_customers_12": 2689,
+        "free_users_12": 8690,
+        "history": [
+          {
+            "month": 1,
+            "paying_customers": 845,
+            "active_free_users": 1330,
+            "mrr": 142382.5,
+            "infra_cost": 17698.65,
+            "support_cost": 42000.0,
+            "gross_margin": 0.5807,
+            "cash_balance": 1539813.85,
+            "runway_months": 14.0,
+            "net_contribution": 14813.85
+          },
+          {
+            "month": 2,
+            "paying_customers": 1031,
+            "active_free_users": 2500,
+            "mrr": 173723.5,
+            "infra_cost": 20512.5,
+            "support_cost": 49000.0,
+            "gross_margin": 0.5999,
+            "cash_balance": 1451154.85,
+            "runway_months": 16.4,
+            "net_contribution": 51154.85
+          },
+          {
+            "month": 3,
+            "paying_customers": 1213,
+            "active_free_users": 3530,
+            "mrr": 204390.5,
+            "infra_cost": 22989.65,
+            "support_cost": 63000.0,
+            "gross_margin": 0.5793,
+            "cash_balance": 1376685.7,
+            "runway_months": 18.5,
+            "net_contribution": 101685.7
+          },
+          {
+            "month": 4,
+            "paying_customers": 1391,
+            "active_free_users": 4436,
+            "mrr": 234383.5,
+            "infra_cost": 25168.58,
+            "support_cost": 70000.0,
+            "gross_margin": 0.594,
+            "cash_balance": 1323030.62,
+            "runway_months": 24.7,
+            "net_contribution": 173030.62
+          },
+          {
+            "month": 5,
+            "paying_customers": 1566,
+            "active_free_users": 5233,
+            "mrr": 263871.0,
+            "infra_cost": 27085.37,
+            "support_cost": 77000.0,
+            "gross_margin": 0.6055,
+            "cash_balance": 1289946.26,
+            "runway_months": 39.0,
+            "net_contribution": 264946.26
+          },
+          {
+            "month": 6,
+            "paying_customers": 1737,
+            "active_free_users": 5935,
+            "mrr": 292684.5,
+            "infra_cost": 28773.68,
+            "support_cost": 84000.0,
+            "gross_margin": 0.6147,
+            "cash_balance": 1276987.08,
+            "runway_months": 98.5,
+            "net_contribution": 376987.08
+          },
+          {
+            "month": 7,
+            "paying_customers": 1904,
+            "active_free_users": 6552,
+            "mrr": 320824.0,
+            "infra_cost": 30257.56,
+            "support_cost": 91000.0,
+            "gross_margin": 0.622,
+            "cash_balance": 1283683.52,
+            "runway_months": 999.0,
+            "net_contribution": 508683.52
+          },
+          {
+            "month": 8,
+            "paying_customers": 2068,
+            "active_free_users": 7095,
+            "mrr": 348458.0,
+            "infra_cost": 31563.48,
+            "support_cost": 105000.0,
+            "gross_margin": 0.6081,
+            "cash_balance": 1302708.04,
+            "runway_months": 999.0,
+            "net_contribution": 652708.05
+          },
+          {
+            "month": 9,
+            "paying_customers": 2228,
+            "active_free_users": 7573,
+            "mrr": 375418.0,
+            "infra_cost": 32713.07,
+            "support_cost": 112000.0,
+            "gross_margin": 0.6145,
+            "cash_balance": 1340542.98,
+            "runway_months": 999.0,
+            "net_contribution": 815542.98
+          },
+          {
+            "month": 10,
+            "paying_customers": 2385,
+            "active_free_users": 7994,
+            "mrr": 401872.5,
+            "infra_cost": 33725.57,
+            "support_cost": 119000.0,
+            "gross_margin": 0.62,
+            "cash_balance": 1396819.91,
+            "runway_months": 999.0,
+            "net_contribution": 996819.91
+          },
+          {
+            "month": 11,
+            "paying_customers": 2539,
+            "active_free_users": 8364,
+            "mrr": 427821.5,
+            "infra_cost": 34615.42,
+            "support_cost": 126000.0,
+            "gross_margin": 0.6246,
+            "cash_balance": 1471155.99,
+            "runway_months": 999.0,
+            "net_contribution": 1196155.99
+          },
+          {
+            "month": 12,
+            "paying_customers": 2689,
+            "active_free_users": 8690,
+            "mrr": 453096.5,
+            "infra_cost": 35399.45,
+            "support_cost": 133000.0,
+            "gross_margin": 0.6283,
+            "cash_balance": 1562983.04,
+            "runway_months": 999.0,
+            "net_contribution": 1412983.04
+          },
+          {
+            "month": 13,
+            "paying_customers": 2836,
+            "active_free_users": 8977,
+            "mrr": 477866.0,
+            "infra_cost": 36089.68,
+            "support_cost": 140000.0,
+            "gross_margin": 0.6315,
+            "cash_balance": 1671889.35,
+            "runway_months": 999.0,
+            "net_contribution": 1646889.35
+          },
+          {
+            "month": 14,
+            "paying_customers": 2980,
+            "active_free_users": 9229,
+            "mrr": 502130.0,
+            "infra_cost": 36695.75,
+            "support_cost": 147000.0,
+            "gross_margin": 0.6342,
+            "cash_balance": 1797453.61,
+            "runway_months": 999.0,
+            "net_contribution": 1897453.61
+          },
+          {
+            "month": 15,
+            "paying_customers": 3121,
+            "active_free_users": 9451,
+            "mrr": 525888.5,
+            "infra_cost": 37229.65,
+            "support_cost": 147000.0,
+            "gross_margin": 0.6497,
+            "cash_balance": 1946242.45,
+            "runway_months": 999.0,
+            "net_contribution": 2171242.46
+          },
+          {
+            "month": 16,
+            "paying_customers": 3259,
+            "active_free_users": 9646,
+            "mrr": 549141.5,
+            "infra_cost": 37698.63,
+            "support_cost": 154000.0,
+            "gross_margin": 0.6509,
+            "cash_balance": 2110815.32,
+            "runway_months": 999.0,
+            "net_contribution": 2460815.33
+          },
+          {
+            "month": 17,
+            "paying_customers": 3394,
+            "active_free_users": 9818,
+            "mrr": 571889.0,
+            "infra_cost": 38112.29,
+            "support_cost": 161000.0,
+            "gross_margin": 0.6518,
+            "cash_balance": 2290722.03,
+            "runway_months": 999.0,
+            "net_contribution": 2765722.04
+          },
+          {
+            "month": 18,
+            "paying_customers": 3526,
+            "active_free_users": 9969,
+            "mrr": 594131.0,
+            "infra_cost": 38475.45,
+            "support_cost": 168000.0,
+            "gross_margin": 0.6525,
+            "cash_balance": 2485507.59,
+            "runway_months": 999.0,
+            "net_contribution": 3085507.59
+          },
+          {
+            "month": 19,
+            "paying_customers": 3656,
+            "active_free_users": 10102,
+            "mrr": 616036.0,
+            "infra_cost": 38795.31,
+            "support_cost": 175000.0,
+            "gross_margin": 0.6529,
+            "cash_balance": 2694878.28,
+            "runway_months": 999.0,
+            "net_contribution": 3419878.28
+          },
+          {
+            "month": 20,
+            "paying_customers": 3783,
+            "active_free_users": 10219,
+            "mrr": 637435.5,
+            "infra_cost": 39076.7,
+            "support_cost": 182000.0,
+            "gross_margin": 0.6532,
+            "cash_balance": 2918367.08,
+            "runway_months": 999.0,
+            "net_contribution": 3768367.08
+          },
+          {
+            "month": 21,
+            "paying_customers": 3907,
+            "active_free_users": 10322,
+            "mrr": 658329.5,
+            "infra_cost": 39324.41,
+            "support_cost": 182000.0,
+            "gross_margin": 0.6638,
+            "cash_balance": 3162502.17,
+            "runway_months": 999.0,
+            "net_contribution": 4137502.17
+          },
+          {
+            "month": 22,
+            "paying_customers": 4029,
+            "active_free_users": 10413,
+            "mrr": 678886.5,
+            "infra_cost": 39543.26,
+            "support_cost": 189000.0,
+            "gross_margin": 0.6634,
+            "cash_balance": 3419975.41,
+            "runway_months": 999.0,
+            "net_contribution": 4519975.41
+          },
+          {
+            "month": 23,
+            "paying_customers": 4148,
+            "active_free_users": 10493,
+            "mrr": 698938.0,
+            "infra_cost": 39735.67,
+            "support_cost": 196000.0,
+            "gross_margin": 0.6627,
+            "cash_balance": 3690307.74,
+            "runway_months": 999.0,
+            "net_contribution": 4915307.75
+          },
+          {
+            "month": 24,
+            "paying_customers": 4265,
+            "active_free_users": 10563,
+            "mrr": 718652.5,
+            "infra_cost": 39904.01,
+            "support_cost": 203000.0,
+            "gross_margin": 0.662,
+            "cash_balance": 3973186.23,
+            "runway_months": 999.0,
+            "net_contribution": 5323186.23
+          }
+        ]
+      },
+      "seed": 42
+    },
+    {
+      "id": "sim_c_cons_199c6a",
+      "strategy": "C_no_free_plan",
+      "scenario": "conservative",
+      "parameters": {
+        "free_to_paid_conversion": 0.025,
+        "min_acceptable_runway_months": 8.0,
+        "monthly_free_signups": 2500.0,
+        "infra_cost_per_free_user": 1.85,
+        "paid_to_free_cannibalization": 0.15,
+        "activation_drop_from_gating": 0.05,
+        "paid_funnel_lift": 1.08,
+        "free_user_ticket_rate": 0.12
+      },
+      "outputs": {
+        "strategy": "C_no_free_plan",
+        "mrr_6": 151481.5,
+        "mrr_12": 187877.5,
+        "mrr_24": 0.0,
+        "net_contribution_6": 83411.5,
+        "net_contribution_12": 347657.0,
+        "net_contribution_24": 1203338.5,
+        "runway_months_12": 7.3,
+        "gross_margin_12": 0.662,
+        "support_headcount_12": 7,
+        "infra_cost_12": 14500.0,
+        "paying_customers_12": 1115,
+        "free_users_12": 0,
+        "history": [
+          {
+            "month": 1,
+            "paying_customers": 698,
+            "active_free_users": 0,
+            "mrr": 117613.0,
+            "infra_cost": 14500.0,
+            "support_cost": 35000.0,
+            "gross_margin": 0.5791,
+            "cash_balance": 1525243.0,
+            "runway_months": 12.2,
+            "net_contribution": 243.0
+          },
+          {
+            "month": 2,
+            "paying_customers": 740,
+            "active_free_users": 0,
+            "mrr": 124690.0,
+            "infra_cost": 14500.0,
+            "support_cost": 35000.0,
+            "gross_margin": 0.603,
+            "cash_balance": 1407563.0,
+            "runway_months": 12.0,
+            "net_contribution": 7563.0
+          },
+          {
+            "month": 3,
+            "paying_customers": 781,
+            "active_free_users": 0,
+            "mrr": 131598.5,
+            "infra_cost": 14500.0,
+            "support_cost": 35000.0,
+            "gross_margin": 0.6239,
+            "cash_balance": 1296791.5,
+            "runway_months": 11.7,
+            "net_contribution": 21791.5
+          },
+          {
+            "month": 4,
+            "paying_customers": 821,
+            "active_free_users": 0,
+            "mrr": 138338.5,
+            "infra_cost": 14500.0,
+            "support_cost": 42000.0,
+            "gross_margin": 0.5916,
+            "cash_balance": 1185760.0,
+            "runway_months": 10.7,
+            "net_contribution": 35760.0
+          },
+          {
+            "month": 5,
+            "paying_customers": 860,
+            "active_free_users": 0,
+            "mrr": 144910.0,
+            "infra_cost": 14500.0,
+            "support_cost": 42000.0,
+            "gross_margin": 0.6101,
+            "cash_balance": 1081300.0,
+            "runway_months": 10.4,
+            "net_contribution": 56300.0
+          },
+          {
+            "month": 6,
+            "paying_customers": 899,
+            "active_free_users": 0,
+            "mrr": 151481.5,
+            "infra_cost": 14500.0,
+            "support_cost": 42000.0,
+            "gross_margin": 0.627,
+            "cash_balance": 983411.5,
+            "runway_months": 10.0,
+            "net_contribution": 83411.5
+          },
+          {
+            "month": 7,
+            "paying_customers": 937,
+            "active_free_users": 0,
+            "mrr": 157884.5,
+            "infra_cost": 14500.0,
+            "support_cost": 42000.0,
+            "gross_margin": 0.6421,
+            "cash_balance": 891926.0,
+            "runway_months": 9.7,
+            "net_contribution": 116926.0
+          },
+          {
+            "month": 8,
+            "paying_customers": 974,
+            "active_free_users": 0,
+            "mrr": 164119.0,
+            "infra_cost": 14500.0,
+            "support_cost": 42000.0,
+            "gross_margin": 0.6557,
+            "cash_balance": 806675.0,
+            "runway_months": 9.5,
+            "net_contribution": 156675.0
+          },
+          {
+            "month": 9,
+            "paying_customers": 1010,
+            "active_free_users": 0,
+            "mrr": 170185.0,
+            "infra_cost": 14500.0,
+            "support_cost": 49000.0,
+            "gross_margin": 0.6269,
+            "cash_balance": 720490.0,
+            "runway_months": 8.4,
+            "net_contribution": 195490.0
+          },
+          {
+            "month": 10,
+            "paying_customers": 1046,
+            "active_free_users": 0,
+            "mrr": 176251.0,
+            "infra_cost": 14500.0,
+            "support_cost": 49000.0,
+            "gross_margin": 0.6397,
+            "cash_balance": 640371.0,
+            "runway_months": 8.0,
+            "net_contribution": 240371.0
+          },
+          {
+            "month": 11,
+            "paying_customers": 1081,
+            "active_free_users": 0,
+            "mrr": 182148.5,
+            "infra_cost": 14500.0,
+            "support_cost": 49000.0,
+            "gross_margin": 0.6514,
+            "cash_balance": 566149.5,
+            "runway_months": 7.6,
+            "net_contribution": 291149.5
+          },
+          {
+            "month": 12,
+            "paying_customers": 1115,
+            "active_free_users": 0,
+            "mrr": 187877.5,
+            "infra_cost": 14500.0,
+            "support_cost": 49000.0,
+            "gross_margin": 0.662,
+            "cash_balance": 497657.0,
+            "runway_months": 7.3,
+            "net_contribution": 347657.0
+          },
+          {
+            "month": 13,
+            "paying_customers": 1148,
+            "active_free_users": 0,
+            "mrr": 193438.0,
+            "infra_cost": 14500.0,
+            "support_cost": 56000.0,
+            "gross_margin": 0.6355,
+            "cash_balance": 427725.0,
+            "runway_months": 6.1,
+            "net_contribution": 402725.0
+          },
+          {
+            "month": 14,
+            "paying_customers": 1181,
+            "active_free_users": 0,
+            "mrr": 198998.5,
+            "infra_cost": 14500.0,
+            "support_cost": 56000.0,
+            "gross_margin": 0.6457,
+            "cash_balance": 363353.5,
+            "runway_months": 5.6,
+            "net_contribution": 463353.5
+          },
+          {
+            "month": 15,
+            "paying_customers": 1213,
+            "active_free_users": 0,
+            "mrr": 204390.5,
+            "infra_cost": 14500.0,
+            "support_cost": 56000.0,
+            "gross_margin": 0.6551,
+            "cash_balance": 304374.0,
+            "runway_months": 5.2,
+            "net_contribution": 529374.0
+          },
+          {
+            "month": 16,
+            "paying_customers": 1244,
+            "active_free_users": 0,
+            "mrr": 209614.0,
+            "infra_cost": 14500.0,
+            "support_cost": 56000.0,
+            "gross_margin": 0.6637,
+            "cash_balance": 250618.0,
+            "runway_months": 4.7,
+            "net_contribution": 600618.0
+          },
+          {
+            "month": 17,
+            "paying_customers": 1275,
+            "active_free_users": 0,
+            "mrr": 214837.5,
+            "infra_cost": 14500.0,
+            "support_cost": 56000.0,
+            "gross_margin": 0.6718,
+            "cash_balance": 202085.5,
+            "runway_months": 4.2,
+            "net_contribution": 677085.5
+          },
+          {
+            "month": 18,
+            "paying_customers": 1305,
+            "active_free_users": 0,
+            "mrr": 219892.5,
+            "infra_cost": 14500.0,
+            "support_cost": 56000.0,
+            "gross_margin": 0.6794,
+            "cash_balance": 158608.0,
+            "runway_months": 3.6,
+            "net_contribution": 758608.0
+          },
+          {
+            "month": 19,
+            "paying_customers": 1334,
+            "active_free_users": 0,
+            "mrr": 224779.0,
+            "infra_cost": 14500.0,
+            "support_cost": 63000.0,
+            "gross_margin": 0.6552,
+            "cash_balance": 113017.0,
+            "runway_months": 2.5,
+            "net_contribution": 838017.0
+          },
+          {
+            "month": 20,
+            "paying_customers": 1363,
+            "active_free_users": 0,
+            "mrr": 229665.5,
+            "infra_cost": 14500.0,
+            "support_cost": 63000.0,
+            "gross_margin": 0.6626,
+            "cash_balance": 72312.5,
+            "runway_months": 1.8,
+            "net_contribution": 922312.5
+          },
+          {
+            "month": 21,
+            "paying_customers": 1391,
+            "active_free_users": 0,
+            "mrr": 234383.5,
+            "infra_cost": 14500.0,
+            "support_cost": 63000.0,
+            "gross_margin": 0.6693,
+            "cash_balance": 36326.0,
+            "runway_months": 1.0,
+            "net_contribution": 1011326.0
+          },
+          {
+            "month": 22,
+            "paying_customers": 1419,
+            "active_free_users": 0,
+            "mrr": 239101.5,
+            "infra_cost": 14500.0,
+            "support_cost": 63000.0,
+            "gross_margin": 0.6759,
+            "cash_balance": 5057.5,
+            "runway_months": 0.2,
+            "net_contribution": 1105057.5
+          },
+          {
+            "month": 23,
+            "paying_customers": 1446,
+            "active_free_users": 0,
+            "mrr": 243651.0,
+            "infra_cost": 14500.0,
+            "support_cost": 63000.0,
+            "gross_margin": 0.6819,
+            "cash_balance": 0.0,
+            "runway_months": 0.0,
+            "net_contribution": 1203338.5
+          },
+          {
+            "month": 24,
+            "paying_customers": 0,
+            "active_free_users": 0,
+            "mrr": 0.0,
+            "infra_cost": 0.0,
+            "support_cost": 0.0,
+            "gross_margin": 0.0,
+            "cash_balance": 0.0,
+            "runway_months": 0.0,
+            "net_contribution": 1203338.5
+          }
+        ]
+      },
+      "seed": 42
+    },
+    {
+      "id": "sim_c_expe_e1fc87",
+      "strategy": "C_no_free_plan",
+      "scenario": "expected",
+      "parameters": {
+        "free_to_paid_conversion": 0.035,
+        "min_acceptable_runway_months": 10.0,
+        "monthly_free_signups": 3800.0,
+        "infra_cost_per_free_user": 1.15,
+        "paid_to_free_cannibalization": 0.08,
+        "activation_drop_from_gating": 0.1,
+        "paid_funnel_lift": 1.18,
+        "free_user_ticket_rate": 0.12
+      },
+      "outputs": {
+        "strategy": "C_no_free_plan",
+        "mrr_6": 156368.0,
+        "mrr_12": 197313.5,
+        "mrr_24": 264882.0,
+        "net_contribution_6": 100935.5,
+        "net_contribution_12": 397181.5,
+        "net_contribution_24": 1469296.0,
+        "runway_months_12": 8.3,
+        "gross_margin_12": 0.6427,
+        "support_headcount_12": 8,
+        "infra_cost_12": 14500.0,
+        "paying_customers_12": 1171,
+        "free_users_12": 0,
+        "history": [
+          {
+            "month": 1,
+            "paying_customers": 703,
+            "active_free_users": 0,
+            "mrr": 118455.5,
+            "infra_cost": 14500.0,
+            "support_cost": 35000.0,
+            "gross_margin": 0.5821,
+            "cash_balance": 1526085.5,
+            "runway_months": 12.3,
+            "net_contribution": 1085.5
+          },
+          {
+            "month": 2,
+            "paying_customers": 750,
+            "active_free_users": 0,
+            "mrr": 126375.0,
+            "infra_cost": 14500.0,
+            "support_cost": 35000.0,
+            "gross_margin": 0.6083,
+            "cash_balance": 1410090.5,
+            "runway_months": 12.2,
+            "net_contribution": 10090.5
+          },
+          {
+            "month": 3,
+            "paying_customers": 796,
+            "active_free_users": 0,
+            "mrr": 134126.0,
+            "infra_cost": 14500.0,
+            "support_cost": 35000.0,
+            "gross_margin": 0.6309,
+            "cash_balance": 1301846.5,
+            "runway_months": 12.0,
+            "net_contribution": 26846.5
+          },
+          {
+            "month": 4,
+            "paying_customers": 841,
+            "active_free_users": 0,
+            "mrr": 141708.5,
+            "infra_cost": 14500.0,
+            "support_cost": 42000.0,
+            "gross_margin": 0.6013,
+            "cash_balance": 1194185.0,
+            "runway_months": 11.1,
+            "net_contribution": 44185.0
+          },
+          {
+            "month": 5,
+            "paying_customers": 885,
+            "active_free_users": 0,
+            "mrr": 149122.5,
+            "infra_cost": 14500.0,
+            "support_cost": 42000.0,
+            "gross_margin": 0.6211,
+            "cash_balance": 1093937.5,
+            "runway_months": 10.9,
+            "net_contribution": 68937.5
+          },
+          {
+            "month": 6,
+            "paying_customers": 928,
+            "active_free_users": 0,
+            "mrr": 156368.0,
+            "infra_cost": 14500.0,
+            "support_cost": 42000.0,
+            "gross_margin": 0.6387,
+            "cash_balance": 1000935.5,
+            "runway_months": 10.8,
+            "net_contribution": 100935.5
+          },
+          {
+            "month": 7,
+            "paying_customers": 971,
+            "active_free_users": 0,
+            "mrr": 163613.5,
+            "infra_cost": 14500.0,
+            "support_cost": 42000.0,
+            "gross_margin": 0.6547,
+            "cash_balance": 915179.0,
+            "runway_months": 10.7,
+            "net_contribution": 140179.0
+          },
+          {
+            "month": 8,
+            "paying_customers": 1013,
+            "active_free_users": 0,
+            "mrr": 170690.5,
+            "infra_cost": 14500.0,
+            "support_cost": 49000.0,
+            "gross_margin": 0.628,
+            "cash_balance": 829499.5,
+            "runway_months": 9.7,
+            "net_contribution": 179499.5
+          },
+          {
+            "month": 9,
+            "paying_customers": 1054,
+            "active_free_users": 0,
+            "mrr": 177599.0,
+            "infra_cost": 14500.0,
+            "support_cost": 49000.0,
+            "gross_margin": 0.6425,
+            "cash_balance": 750728.5,
+            "runway_months": 9.5,
+            "net_contribution": 225728.5
+          },
+          {
+            "month": 10,
+            "paying_customers": 1094,
+            "active_free_users": 0,
+            "mrr": 184339.0,
+            "infra_cost": 14500.0,
+            "support_cost": 49000.0,
+            "gross_margin": 0.6555,
+            "cash_balance": 678697.5,
+            "runway_months": 9.4,
+            "net_contribution": 278697.5
+          },
+          {
+            "month": 11,
+            "paying_customers": 1133,
+            "active_free_users": 0,
+            "mrr": 190910.5,
+            "infra_cost": 14500.0,
+            "support_cost": 49000.0,
+            "gross_margin": 0.6674,
+            "cash_balance": 613238.0,
+            "runway_months": 9.4,
+            "net_contribution": 338238.0
+          },
+          {
+            "month": 12,
+            "paying_customers": 1171,
+            "active_free_users": 0,
+            "mrr": 197313.5,
+            "infra_cost": 14500.0,
+            "support_cost": 56000.0,
+            "gross_margin": 0.6427,
+            "cash_balance": 547181.5,
+            "runway_months": 8.3,
+            "net_contribution": 397181.5
+          },
+          {
+            "month": 13,
+            "paying_customers": 1208,
+            "active_free_users": 0,
+            "mrr": 203548.0,
+            "infra_cost": 14500.0,
+            "support_cost": 56000.0,
+            "gross_margin": 0.6536,
+            "cash_balance": 487359.5,
+            "runway_months": 8.1,
+            "net_contribution": 462359.5
+          },
+          {
+            "month": 14,
+            "paying_customers": 1245,
+            "active_free_users": 0,
+            "mrr": 209782.5,
+            "infra_cost": 14500.0,
+            "support_cost": 56000.0,
+            "gross_margin": 0.6639,
+            "cash_balance": 433772.0,
+            "runway_months": 8.1,
+            "net_contribution": 533772.0
+          },
+          {
+            "month": 15,
+            "paying_customers": 1281,
+            "active_free_users": 0,
+            "mrr": 215848.5,
+            "infra_cost": 14500.0,
+            "support_cost": 56000.0,
+            "gross_margin": 0.6734,
+            "cash_balance": 386250.5,
+            "runway_months": 8.1,
+            "net_contribution": 611250.5
+          },
+          {
+            "month": 16,
+            "paying_customers": 1316,
+            "active_free_users": 0,
+            "mrr": 221746.0,
+            "infra_cost": 14500.0,
+            "support_cost": 63000.0,
+            "gross_margin": 0.6505,
+            "cash_balance": 337626.5,
+            "runway_months": 6.9,
+            "net_contribution": 687626.5
+          },
+          {
+            "month": 17,
+            "paying_customers": 1350,
+            "active_free_users": 0,
+            "mrr": 227475.0,
+            "infra_cost": 14500.0,
+            "support_cost": 63000.0,
+            "gross_margin": 0.6593,
+            "cash_balance": 294731.5,
+            "runway_months": 6.9,
+            "net_contribution": 769731.5
+          },
+          {
+            "month": 18,
+            "paying_customers": 1384,
+            "active_free_users": 0,
+            "mrr": 233204.0,
+            "infra_cost": 14500.0,
+            "support_cost": 63000.0,
+            "gross_margin": 0.6677,
+            "cash_balance": 257565.5,
+            "runway_months": 6.9,
+            "net_contribution": 857565.5
+          },
+          {
+            "month": 19,
+            "paying_customers": 1417,
+            "active_free_users": 0,
+            "mrr": 238764.5,
+            "infra_cost": 14500.0,
+            "support_cost": 63000.0,
+            "gross_margin": 0.6754,
+            "cash_balance": 225960.0,
+            "runway_months": 7.1,
+            "net_contribution": 950960.0
+          },
+          {
+            "month": 20,
+            "paying_customers": 1449,
+            "active_free_users": 0,
+            "mrr": 244156.5,
+            "infra_cost": 14500.0,
+            "support_cost": 63000.0,
+            "gross_margin": 0.6826,
+            "cash_balance": 199746.5,
+            "runway_months": 7.6,
+            "net_contribution": 1049746.5
+          },
+          {
+            "month": 21,
+            "paying_customers": 1481,
+            "active_free_users": 0,
+            "mrr": 249548.5,
+            "infra_cost": 14500.0,
+            "support_cost": 70000.0,
+            "gross_margin": 0.6614,
+            "cash_balance": 171925.0,
+            "runway_months": 6.2,
+            "net_contribution": 1146925.0
+          },
+          {
+            "month": 22,
+            "paying_customers": 1512,
+            "active_free_users": 0,
+            "mrr": 254772.0,
+            "infra_cost": 14500.0,
+            "support_cost": 70000.0,
+            "gross_margin": 0.6683,
+            "cash_balance": 149327.0,
+            "runway_months": 6.6,
+            "net_contribution": 1249327.0
+          },
+          {
+            "month": 23,
+            "paying_customers": 1542,
+            "active_free_users": 0,
+            "mrr": 259827.0,
+            "infra_cost": 14500.0,
+            "support_cost": 70000.0,
+            "gross_margin": 0.6748,
+            "cash_balance": 131784.0,
+            "runway_months": 7.5,
+            "net_contribution": 1356784.0
+          },
+          {
+            "month": 24,
+            "paying_customers": 1572,
+            "active_free_users": 0,
+            "mrr": 264882.0,
+            "infra_cost": 14500.0,
+            "support_cost": 70000.0,
+            "gross_margin": 0.681,
+            "cash_balance": 119296.0,
+            "runway_months": 9.6,
+            "net_contribution": 1469296.0
+          }
+        ]
+      },
+      "seed": 42
+    },
+    {
+      "id": "sim_c_opti_9f8398",
+      "strategy": "C_no_free_plan",
+      "scenario": "optimistic",
+      "parameters": {
+        "free_to_paid_conversion": 0.05,
+        "min_acceptable_runway_months": 12.0,
+        "monthly_free_signups": 5200.0,
+        "infra_cost_per_free_user": 0.75,
+        "paid_to_free_cannibalization": 0.04,
+        "activation_drop_from_gating": 0.2,
+        "paid_funnel_lift": 1.28,
+        "free_user_ticket_rate": 0.12
+      },
+      "outputs": {
+        "strategy": "C_no_free_plan",
+        "mrr_6": 161591.5,
+        "mrr_12": 206581.0,
+        "mrr_24": 281732.0,
+        "net_contribution_6": 119639.0,
+        "net_contribution_12": 447380.0,
+        "net_contribution_24": 1647771.0,
+        "runway_months_12": 10.5,
+        "gross_margin_12": 0.6587,
+        "support_headcount_12": 8,
+        "infra_cost_12": 14500.0,
+        "paying_customers_12": 1226,
+        "free_users_12": 0,
+        "history": [
+          {
+            "month": 1,
+            "paying_customers": 709,
+            "active_free_users": 0,
+            "mrr": 119466.5,
+            "infra_cost": 14500.0,
+            "support_cost": 35000.0,
+            "gross_margin": 0.5857,
+            "cash_balance": 1527096.5,
+            "runway_months": 12.4,
+            "net_contribution": 2096.5
+          },
+          {
+            "month": 2,
+            "paying_customers": 761,
+            "active_free_users": 0,
+            "mrr": 128228.5,
+            "infra_cost": 14500.0,
+            "support_cost": 35000.0,
+            "gross_margin": 0.614,
+            "cash_balance": 1412955.0,
+            "runway_months": 12.4,
+            "net_contribution": 12955.0
+          },
+          {
+            "month": 3,
+            "paying_customers": 812,
+            "active_free_users": 0,
+            "mrr": 136822.0,
+            "infra_cost": 14500.0,
+            "support_cost": 35000.0,
+            "gross_margin": 0.6382,
+            "cash_balance": 1307407.0,
+            "runway_months": 12.4,
+            "net_contribution": 32407.0
+          },
+          {
+            "month": 4,
+            "paying_customers": 862,
+            "active_free_users": 0,
+            "mrr": 145247.0,
+            "infra_cost": 14500.0,
+            "support_cost": 42000.0,
+            "gross_margin": 0.611,
+            "cash_balance": 1203284.0,
+            "runway_months": 11.6,
+            "net_contribution": 53284.0
+          },
+          {
+            "month": 5,
+            "paying_customers": 911,
+            "active_free_users": 0,
+            "mrr": 153503.5,
+            "infra_cost": 14500.0,
+            "support_cost": 42000.0,
+            "gross_margin": 0.6319,
+            "cash_balance": 1107417.5,
+            "runway_months": 11.6,
+            "net_contribution": 82417.5
+          },
+          {
+            "month": 6,
+            "paying_customers": 959,
+            "active_free_users": 0,
+            "mrr": 161591.5,
+            "infra_cost": 14500.0,
+            "support_cost": 42000.0,
+            "gross_margin": 0.6504,
+            "cash_balance": 1019639.0,
+            "runway_months": 11.6,
+            "net_contribution": 119639.0
+          },
+          {
+            "month": 7,
+            "paying_customers": 1006,
+            "active_free_users": 0,
+            "mrr": 169511.0,
+            "infra_cost": 14500.0,
+            "support_cost": 49000.0,
+            "gross_margin": 0.6254,
+            "cash_balance": 932780.0,
+            "runway_months": 10.7,
+            "net_contribution": 157780.0
+          },
+          {
+            "month": 8,
+            "paying_customers": 1052,
+            "active_free_users": 0,
+            "mrr": 177262.0,
+            "infra_cost": 14500.0,
+            "support_cost": 49000.0,
+            "gross_margin": 0.6418,
+            "cash_balance": 853672.0,
+            "runway_months": 10.8,
+            "net_contribution": 203672.0
+          },
+          {
+            "month": 9,
+            "paying_customers": 1097,
+            "active_free_users": 0,
+            "mrr": 184844.5,
+            "infra_cost": 14500.0,
+            "support_cost": 49000.0,
+            "gross_margin": 0.6565,
+            "cash_balance": 782146.5,
+            "runway_months": 10.9,
+            "net_contribution": 257146.5
+          },
+          {
+            "month": 10,
+            "paying_customers": 1141,
+            "active_free_users": 0,
+            "mrr": 192258.5,
+            "infra_cost": 14500.0,
+            "support_cost": 49000.0,
+            "gross_margin": 0.6697,
+            "cash_balance": 718035.0,
+            "runway_months": 11.2,
+            "net_contribution": 318035.0
+          },
+          {
+            "month": 11,
+            "paying_customers": 1184,
+            "active_free_users": 0,
+            "mrr": 199504.0,
+            "infra_cost": 14500.0,
+            "support_cost": 56000.0,
+            "gross_margin": 0.6466,
+            "cash_balance": 654169.0,
+            "runway_months": 10.2,
+            "net_contribution": 379169.0
+          },
+          {
+            "month": 12,
+            "paying_customers": 1226,
+            "active_free_users": 0,
+            "mrr": 206581.0,
+            "infra_cost": 14500.0,
+            "support_cost": 56000.0,
+            "gross_margin": 0.6587,
+            "cash_balance": 597380.0,
+            "runway_months": 10.5,
+            "net_contribution": 447380.0
+          },
+          {
+            "month": 13,
+            "paying_customers": 1268,
+            "active_free_users": 0,
+            "mrr": 213658.0,
+            "infra_cost": 14500.0,
+            "support_cost": 56000.0,
+            "gross_margin": 0.67,
+            "cash_balance": 547668.0,
+            "runway_months": 11.0,
+            "net_contribution": 522668.0
+          },
+          {
+            "month": 14,
+            "paying_customers": 1309,
+            "active_free_users": 0,
+            "mrr": 220566.5,
+            "infra_cost": 14500.0,
+            "support_cost": 56000.0,
+            "gross_margin": 0.6804,
+            "cash_balance": 504864.5,
+            "runway_months": 11.8,
+            "net_contribution": 604864.5
+          },
+          {
+            "month": 15,
+            "paying_customers": 1349,
+            "active_free_users": 0,
+            "mrr": 227306.5,
+            "infra_cost": 14500.0,
+            "support_cost": 63000.0,
+            "gross_margin": 0.6591,
+            "cash_balance": 461801.0,
+            "runway_months": 10.7,
+            "net_contribution": 686801.0
+          },
+          {
+            "month": 16,
+            "paying_customers": 1388,
+            "active_free_users": 0,
+            "mrr": 233878.0,
+            "infra_cost": 14500.0,
+            "support_cost": 63000.0,
+            "gross_margin": 0.6686,
+            "cash_balance": 425309.0,
+            "runway_months": 11.7,
+            "net_contribution": 775309.0
+          },
+          {
+            "month": 17,
+            "paying_customers": 1426,
+            "active_free_users": 0,
+            "mrr": 240281.0,
+            "infra_cost": 14500.0,
+            "support_cost": 63000.0,
+            "gross_margin": 0.6775,
+            "cash_balance": 395220.0,
+            "runway_months": 13.1,
+            "net_contribution": 870220.0
+          },
+          {
+            "month": 18,
+            "paying_customers": 1463,
+            "active_free_users": 0,
+            "mrr": 246515.5,
+            "infra_cost": 14500.0,
+            "support_cost": 63000.0,
+            "gross_margin": 0.6856,
+            "cash_balance": 371365.5,
+            "runway_months": 15.6,
+            "net_contribution": 971365.5
+          },
+          {
+            "month": 19,
+            "paying_customers": 1500,
+            "active_free_users": 0,
+            "mrr": 252750.0,
+            "infra_cost": 14500.0,
+            "support_cost": 70000.0,
+            "gross_margin": 0.6657,
+            "cash_balance": 346745.5,
+            "runway_months": 14.1,
+            "net_contribution": 1071745.5
+          },
+          {
+            "month": 20,
+            "paying_customers": 1536,
+            "active_free_users": 0,
+            "mrr": 258816.0,
+            "infra_cost": 14500.0,
+            "support_cost": 70000.0,
+            "gross_margin": 0.6735,
+            "cash_balance": 328191.5,
+            "runway_months": 17.7,
+            "net_contribution": 1178191.5
+          },
+          {
+            "month": 21,
+            "paying_customers": 1571,
+            "active_free_users": 0,
+            "mrr": 264713.5,
+            "infra_cost": 14500.0,
+            "support_cost": 70000.0,
+            "gross_margin": 0.6808,
+            "cash_balance": 315535.0,
+            "runway_months": 24.9,
+            "net_contribution": 1290535.0
+          },
+          {
+            "month": 22,
+            "paying_customers": 1605,
+            "active_free_users": 0,
+            "mrr": 270442.5,
+            "infra_cost": 14500.0,
+            "support_cost": 70000.0,
+            "gross_margin": 0.6875,
+            "cash_balance": 308607.5,
+            "runway_months": 44.5,
+            "net_contribution": 1408607.5
+          },
+          {
+            "month": 23,
+            "paying_customers": 1639,
+            "active_free_users": 0,
+            "mrr": 276171.5,
+            "infra_cost": 14500.0,
+            "support_cost": 77000.0,
+            "gross_margin": 0.6687,
+            "cash_balance": 300409.0,
+            "runway_months": 36.6,
+            "net_contribution": 1525409.0
+          },
+          {
+            "month": 24,
+            "paying_customers": 1672,
+            "active_free_users": 0,
+            "mrr": 281732.0,
+            "infra_cost": 14500.0,
+            "support_cost": 77000.0,
+            "gross_margin": 0.6752,
+            "cash_balance": 297771.0,
+            "runway_months": 112.9,
+            "net_contribution": 1647771.0
+          }
+        ]
+      },
+      "seed": 42
+    },
+    {
+      "id": "sim_c_stre_f45249",
+      "strategy": "C_no_free_plan",
+      "scenario": "stress_infra",
+      "parameters": {
+        "free_to_paid_conversion": 0.035,
+        "min_acceptable_runway_months": 10.0,
+        "monthly_free_signups": 3800.0,
+        "infra_cost_per_free_user": 3.7,
+        "paid_to_free_cannibalization": 0.08,
+        "activation_drop_from_gating": 0.1,
+        "paid_funnel_lift": 1.18,
+        "free_user_ticket_rate": 0.12
+      },
+      "outputs": {
+        "strategy": "C_no_free_plan",
+        "mrr_6": 156368.0,
+        "mrr_12": 197313.5,
+        "mrr_24": 264882.0,
+        "net_contribution_6": 100935.5,
+        "net_contribution_12": 397181.5,
+        "net_contribution_24": 1469296.0,
+        "runway_months_12": 8.3,
+        "gross_margin_12": 0.6427,
+        "support_headcount_12": 8,
+        "infra_cost_12": 14500.0,
+        "paying_customers_12": 1171,
+        "free_users_12": 0,
+        "history": [
+          {
+            "month": 1,
+            "paying_customers": 703,
+            "active_free_users": 0,
+            "mrr": 118455.5,
+            "infra_cost": 14500.0,
+            "support_cost": 35000.0,
+            "gross_margin": 0.5821,
+            "cash_balance": 1526085.5,
+            "runway_months": 12.3,
+            "net_contribution": 1085.5
+          },
+          {
+            "month": 2,
+            "paying_customers": 750,
+            "active_free_users": 0,
+            "mrr": 126375.0,
+            "infra_cost": 14500.0,
+            "support_cost": 35000.0,
+            "gross_margin": 0.6083,
+            "cash_balance": 1410090.5,
+            "runway_months": 12.2,
+            "net_contribution": 10090.5
+          },
+          {
+            "month": 3,
+            "paying_customers": 796,
+            "active_free_users": 0,
+            "mrr": 134126.0,
+            "infra_cost": 14500.0,
+            "support_cost": 35000.0,
+            "gross_margin": 0.6309,
+            "cash_balance": 1301846.5,
+            "runway_months": 12.0,
+            "net_contribution": 26846.5
+          },
+          {
+            "month": 4,
+            "paying_customers": 841,
+            "active_free_users": 0,
+            "mrr": 141708.5,
+            "infra_cost": 14500.0,
+            "support_cost": 42000.0,
+            "gross_margin": 0.6013,
+            "cash_balance": 1194185.0,
+            "runway_months": 11.1,
+            "net_contribution": 44185.0
+          },
+          {
+            "month": 5,
+            "paying_customers": 885,
+            "active_free_users": 0,
+            "mrr": 149122.5,
+            "infra_cost": 14500.0,
+            "support_cost": 42000.0,
+            "gross_margin": 0.6211,
+            "cash_balance": 1093937.5,
+            "runway_months": 10.9,
+            "net_contribution": 68937.5
+          },
+          {
+            "month": 6,
+            "paying_customers": 928,
+            "active_free_users": 0,
+            "mrr": 156368.0,
+            "infra_cost": 14500.0,
+            "support_cost": 42000.0,
+            "gross_margin": 0.6387,
+            "cash_balance": 1000935.5,
+            "runway_months": 10.8,
+            "net_contribution": 100935.5
+          },
+          {
+            "month": 7,
+            "paying_customers": 971,
+            "active_free_users": 0,
+            "mrr": 163613.5,
+            "infra_cost": 14500.0,
+            "support_cost": 42000.0,
+            "gross_margin": 0.6547,
+            "cash_balance": 915179.0,
+            "runway_months": 10.7,
+            "net_contribution": 140179.0
+          },
+          {
+            "month": 8,
+            "paying_customers": 1013,
+            "active_free_users": 0,
+            "mrr": 170690.5,
+            "infra_cost": 14500.0,
+            "support_cost": 49000.0,
+            "gross_margin": 0.628,
+            "cash_balance": 829499.5,
+            "runway_months": 9.7,
+            "net_contribution": 179499.5
+          },
+          {
+            "month": 9,
+            "paying_customers": 1054,
+            "active_free_users": 0,
+            "mrr": 177599.0,
+            "infra_cost": 14500.0,
+            "support_cost": 49000.0,
+            "gross_margin": 0.6425,
+            "cash_balance": 750728.5,
+            "runway_months": 9.5,
+            "net_contribution": 225728.5
+          },
+          {
+            "month": 10,
+            "paying_customers": 1094,
+            "active_free_users": 0,
+            "mrr": 184339.0,
+            "infra_cost": 14500.0,
+            "support_cost": 49000.0,
+            "gross_margin": 0.6555,
+            "cash_balance": 678697.5,
+            "runway_months": 9.4,
+            "net_contribution": 278697.5
+          },
+          {
+            "month": 11,
+            "paying_customers": 1133,
+            "active_free_users": 0,
+            "mrr": 190910.5,
+            "infra_cost": 14500.0,
+            "support_cost": 49000.0,
+            "gross_margin": 0.6674,
+            "cash_balance": 613238.0,
+            "runway_months": 9.4,
+            "net_contribution": 338238.0
+          },
+          {
+            "month": 12,
+            "paying_customers": 1171,
+            "active_free_users": 0,
+            "mrr": 197313.5,
+            "infra_cost": 14500.0,
+            "support_cost": 56000.0,
+            "gross_margin": 0.6427,
+            "cash_balance": 547181.5,
+            "runway_months": 8.3,
+            "net_contribution": 397181.5
+          },
+          {
+            "month": 13,
+            "paying_customers": 1208,
+            "active_free_users": 0,
+            "mrr": 203548.0,
+            "infra_cost": 14500.0,
+            "support_cost": 56000.0,
+            "gross_margin": 0.6536,
+            "cash_balance": 487359.5,
+            "runway_months": 8.1,
+            "net_contribution": 462359.5
+          },
+          {
+            "month": 14,
+            "paying_customers": 1245,
+            "active_free_users": 0,
+            "mrr": 209782.5,
+            "infra_cost": 14500.0,
+            "support_cost": 56000.0,
+            "gross_margin": 0.6639,
+            "cash_balance": 433772.0,
+            "runway_months": 8.1,
+            "net_contribution": 533772.0
+          },
+          {
+            "month": 15,
+            "paying_customers": 1281,
+            "active_free_users": 0,
+            "mrr": 215848.5,
+            "infra_cost": 14500.0,
+            "support_cost": 56000.0,
+            "gross_margin": 0.6734,
+            "cash_balance": 386250.5,
+            "runway_months": 8.1,
+            "net_contribution": 611250.5
+          },
+          {
+            "month": 16,
+            "paying_customers": 1316,
+            "active_free_users": 0,
+            "mrr": 221746.0,
+            "infra_cost": 14500.0,
+            "support_cost": 63000.0,
+            "gross_margin": 0.6505,
+            "cash_balance": 337626.5,
+            "runway_months": 6.9,
+            "net_contribution": 687626.5
+          },
+          {
+            "month": 17,
+            "paying_customers": 1350,
+            "active_free_users": 0,
+            "mrr": 227475.0,
+            "infra_cost": 14500.0,
+            "support_cost": 63000.0,
+            "gross_margin": 0.6593,
+            "cash_balance": 294731.5,
+            "runway_months": 6.9,
+            "net_contribution": 769731.5
+          },
+          {
+            "month": 18,
+            "paying_customers": 1384,
+            "active_free_users": 0,
+            "mrr": 233204.0,
+            "infra_cost": 14500.0,
+            "support_cost": 63000.0,
+            "gross_margin": 0.6677,
+            "cash_balance": 257565.5,
+            "runway_months": 6.9,
+            "net_contribution": 857565.5
+          },
+          {
+            "month": 19,
+            "paying_customers": 1417,
+            "active_free_users": 0,
+            "mrr": 238764.5,
+            "infra_cost": 14500.0,
+            "support_cost": 63000.0,
+            "gross_margin": 0.6754,
+            "cash_balance": 225960.0,
+            "runway_months": 7.1,
+            "net_contribution": 950960.0
+          },
+          {
+            "month": 20,
+            "paying_customers": 1449,
+            "active_free_users": 0,
+            "mrr": 244156.5,
+            "infra_cost": 14500.0,
+            "support_cost": 63000.0,
+            "gross_margin": 0.6826,
+            "cash_balance": 199746.5,
+            "runway_months": 7.6,
+            "net_contribution": 1049746.5
+          },
+          {
+            "month": 21,
+            "paying_customers": 1481,
+            "active_free_users": 0,
+            "mrr": 249548.5,
+            "infra_cost": 14500.0,
+            "support_cost": 70000.0,
+            "gross_margin": 0.6614,
+            "cash_balance": 171925.0,
+            "runway_months": 6.2,
+            "net_contribution": 1146925.0
+          },
+          {
+            "month": 22,
+            "paying_customers": 1512,
+            "active_free_users": 0,
+            "mrr": 254772.0,
+            "infra_cost": 14500.0,
+            "support_cost": 70000.0,
+            "gross_margin": 0.6683,
+            "cash_balance": 149327.0,
+            "runway_months": 6.6,
+            "net_contribution": 1249327.0
+          },
+          {
+            "month": 23,
+            "paying_customers": 1542,
+            "active_free_users": 0,
+            "mrr": 259827.0,
+            "infra_cost": 14500.0,
+            "support_cost": 70000.0,
+            "gross_margin": 0.6748,
+            "cash_balance": 131784.0,
+            "runway_months": 7.5,
+            "net_contribution": 1356784.0
+          },
+          {
+            "month": 24,
+            "paying_customers": 1572,
+            "active_free_users": 0,
+            "mrr": 264882.0,
+            "infra_cost": 14500.0,
+            "support_cost": 70000.0,
+            "gross_margin": 0.681,
+            "cash_balance": 119296.0,
+            "runway_months": 9.6,
+            "net_contribution": 1469296.0
+          }
+        ]
+      },
+      "seed": 42
+    }
+  ],
+  "verification_results": [
+    {
+      "check_name": "unit_consistency",
+      "status": "passed",
+      "detail": "All assumption units conform to standard taxonomy."
+    },
+    {
+      "check_name": "financial_tie_out",
+      "status": "passed",
+      "detail": "Company baseline financials, customer counts, and ARR tie out with 100% precision."
+    },
+    {
+      "check_name": "provenance_integrity",
+      "status": "passed",
+      "detail": "All verified_data assumptions trace to authentic company snapshot fields."
+    },
+    {
+      "check_name": "required_sections",
+      "status": "passed",
+      "detail": "All 10 required report sections are populated."
+    },
+    {
+      "check_name": "report_traceability",
+      "status": "passed",
+      "detail": "Every scenario table metric ties out directly to underlying SimulationRun outputs."
+    }
+  ],
+  "report": {
+    "decision_id": "dec_175709d1",
+    "sections": {
+      "executive_summary": "Recommendation: Proceed with B usage caps (Confidence: High). Under expected operating parameters, B usage caps generates an estimated $1,527,735.08 in cumulative 12-month net contribution while preserving 999.0 months of cash runway (safety threshold: 10.0 mo). The recommendation remains viable as long as free-to-paid conversion stays above 0.61%.",
+      "confidence_assessment": {
+        "level": "High",
+        "score": 0.75,
+        "reasons": [
+          "Strong net contribution lead of $329,004.38 over runner-up.",
+          "Average assumption provenance confidence is 71.1%."
+        ]
+      },
+      "current_position": {
+        "company": "NimbusDesk",
+        "stage": "Series A",
+        "mrr": 110370,
+        "arr": 1324440,
+        "cash_balance": 1650000,
+        "runway_months": 13.2,
+        "paying_customers": 655,
+        "synthetic_data_badge": true
+      },
+      "strategies_compared": [
+        {
+          "strategy": "B_usage_caps",
+          "rank": 1,
+          "is_feasible": true,
+          "net_contribution_12": 1527735.08,
+          "mrr_12": 453096.5,
+          "runway_months_12": 999.0,
+          "gross_margin_12": 0.6601,
+          "feasibility_reason": "Runway (999.0 mo) satisfies the 10.0-month safety floor."
+        },
+        {
+          "strategy": "A_limited_features",
+          "rank": 2,
+          "is_feasible": true,
+          "net_contribution_12": 1198730.7,
+          "mrr_12": 412488.0,
+          "runway_months_12": 999.0,
+          "gross_margin_12": 0.6182,
+          "feasibility_reason": "Runway (999.0 mo) satisfies the 10.0-month safety floor."
+        },
+        {
+          "strategy": "C_no_free_plan",
+          "rank": 3,
+          "is_feasible": false,
+          "net_contribution_12": 397181.5,
+          "mrr_12": 197313.5,
+          "runway_months_12": 8.3,
+          "gross_margin_12": 0.6427,
+          "feasibility_reason": "Runway (8.3 mo) breaches the 10.0-month minimum constraint."
+        }
+      ],
+      "scenario_table": [
+        {
+          "strategy": "A_limited_features",
+          "scenario": "conservative",
+          "mrr_12": 278530.5,
+          "net_contribution_12": 596079.55,
+          "runway_months_12": 24.5,
+          "gross_margin_12": 0.5833,
+          "support_headcount_12": 13
+        },
+        {
+          "strategy": "A_limited_features",
+          "scenario": "expected",
+          "mrr_12": 412488.0,
+          "net_contribution_12": 1198730.7,
+          "runway_months_12": 999.0,
+          "gross_margin_12": 0.6182,
+          "support_headcount_12": 19
+        },
+        {
+          "strategy": "A_limited_features",
+          "scenario": "optimistic",
+          "mrr_12": 645355.0,
+          "net_contribution_12": 2316056.25,
+          "runway_months_12": 999.0,
+          "gross_margin_12": 0.6492,
+          "support_headcount_12": 29
+        },
+        {
+          "strategy": "A_limited_features",
+          "scenario": "stress_infra",
+          "mrr_12": 412488.0,
+          "net_contribution_12": 1022189.1,
+          "runway_months_12": 999.0,
+          "gross_margin_12": 0.5645,
+          "support_headcount_12": 19
+        },
+        {
+          "strategy": "B_usage_caps",
+          "scenario": "conservative",
+          "mrr_12": 304479.5,
+          "net_contribution_12": 814130.76,
+          "runway_months_12": 1262.0,
+          "gross_margin_12": 0.6309,
+          "support_headcount_12": 13
+        },
+        {
+          "strategy": "B_usage_caps",
+          "scenario": "expected",
+          "mrr_12": 453096.5,
+          "net_contribution_12": 1527735.08,
+          "runway_months_12": 999.0,
+          "gross_margin_12": 0.6601,
+          "support_headcount_12": 19
+        },
+        {
+          "strategy": "B_usage_caps",
+          "scenario": "optimistic",
+          "mrr_12": 717810.0,
+          "net_contribution_12": 2831426.64,
+          "runway_months_12": 999.0,
+          "gross_margin_12": 0.6889,
+          "support_headcount_12": 29
+        },
+        {
+          "strategy": "B_usage_caps",
+          "scenario": "stress_infra",
+          "mrr_12": 453096.5,
+          "net_contribution_12": 1412983.04,
+          "runway_months_12": 999.0,
+          "gross_margin_12": 0.6283,
+          "support_headcount_12": 19
+        },
+        {
+          "strategy": "C_no_free_plan",
+          "scenario": "conservative",
+          "mrr_12": 187877.5,
+          "net_contribution_12": 347657.0,
+          "runway_months_12": 7.3,
+          "gross_margin_12": 0.662,
+          "support_headcount_12": 7
+        },
+        {
+          "strategy": "C_no_free_plan",
+          "scenario": "expected",
+          "mrr_12": 197313.5,
+          "net_contribution_12": 397181.5,
+          "runway_months_12": 8.3,
+          "gross_margin_12": 0.6427,
+          "support_headcount_12": 8
+        },
+        {
+          "strategy": "C_no_free_plan",
+          "scenario": "optimistic",
+          "mrr_12": 206581.0,
+          "net_contribution_12": 447380.0,
+          "runway_months_12": 10.5,
+          "gross_margin_12": 0.6587,
+          "support_headcount_12": 8
+        },
+        {
+          "strategy": "C_no_free_plan",
+          "scenario": "stress_infra",
+          "mrr_12": 197313.5,
+          "net_contribution_12": 397181.5,
+          "runway_months_12": 8.3,
+          "gross_margin_12": 0.6427,
+          "support_headcount_12": 8
+        }
+      ],
+      "conflicts_resolution": [
+        {
+          "id": "conf_rec_2992c3",
+          "type": "contradictory_recommendations",
+          "agents": [
+            "Growth",
+            "CFO"
+          ],
+          "disputed_item": "decision_recommendation",
+          "resolution": "Resolved by simulation: Reconciled Growth (proceed) and CFO (proceed_with_limits). Simulation demonstrates that unconstrained rollout introduces tail risk, but capped rollout preserves a gross margin of 66.0% and adds $741,130.08 minimum net contribution. Recommendation unified as 'proceed_with_limits'.",
+          "simulation_ids": [
+            "sim_b_expe_c6a090",
+            "sim_b_expe_fde0f9"
+          ],
+          "unresolved": false
+        },
+        {
+          "id": "conf_rec_693344",
+          "type": "contradictory_recommendations",
+          "agents": [
+            "Growth",
+            "CTO"
+          ],
+          "disputed_item": "decision_recommendation",
+          "resolution": "Resolved by simulation: Reconciled Growth (proceed) and CTO (proceed_with_limits). Simulation demonstrates that unconstrained rollout introduces tail risk, but capped rollout preserves a gross margin of 66.0% and adds $869,238.08 minimum net contribution. Recommendation unified as 'proceed_with_limits'.",
+          "simulation_ids": [
+            "sim_b_expe_bd3733",
+            "sim_b_expe_93bb17"
+          ],
+          "unresolved": false
+        },
+        {
+          "id": "conf_rec_0ee47a",
+          "type": "contradictory_recommendations",
+          "agents": [
+            "Growth",
+            "Customer"
+          ],
+          "disputed_item": "decision_recommendation",
+          "resolution": "Resolved by simulation: Reconciled Growth (proceed) and Customer (proceed_with_limits). Simulation demonstrates that unconstrained rollout introduces tail risk, but capped rollout preserves a gross margin of 66.0% and adds $869,238.08 minimum net contribution. Recommendation unified as 'proceed_with_limits'.",
+          "simulation_ids": [
+            "sim_b_expe_84f274",
+            "sim_b_expe_059af6"
+          ],
+          "unresolved": false
+        },
+        {
+          "id": "conf_rec_0a176b",
+          "type": "contradictory_recommendations",
+          "agents": [
+            "Growth",
+            "Product"
+          ],
+          "disputed_item": "decision_recommendation",
+          "resolution": "Resolved by simulation: Reconciled Growth (proceed) and Product (proceed_with_limits). Simulation demonstrates that unconstrained rollout introduces tail risk, but capped rollout preserves a gross margin of 66.0% and adds $869,238.08 minimum net contribution. Recommendation unified as 'proceed_with_limits'.",
+          "simulation_ids": [
+            "sim_b_expe_c61202",
+            "sim_b_expe_1806ad"
+          ],
+          "unresolved": false
+        },
+        {
+          "id": "conf_rec_dbfc5a",
+          "type": "contradictory_recommendations",
+          "agents": [
+            "Growth",
+            "Skeptic"
+          ],
+          "disputed_item": "decision_recommendation",
+          "resolution": "Resolved by simulation: Reconciled Growth (proceed) and Skeptic (proceed_with_limits). Simulation demonstrates that unconstrained rollout introduces tail risk, but capped rollout preserves a gross margin of 66.0% and adds $869,238.08 minimum net contribution. Recommendation unified as 'proceed_with_limits'.",
+          "simulation_ids": [
+            "sim_b_expe_b2a5e0",
+            "sim_b_expe_887434"
+          ],
+          "unresolved": false
+        },
+        {
+          "id": "conf_range_09f69f",
+          "type": "non_overlapping_ranges",
+          "agents": [
+            "CFO",
+            "Growth"
+          ],
+          "disputed_item": "free_to_paid_conversion",
+          "resolution": "Resolved by simulation: Under CFO's assumptions, 12mo net contribution is $741,130.08 with 92.3 months runway. Under Growth's assumptions, net contribution reaches $1,527,735.08 (delta: $786,605.00) with 999.0 months runway. Because the conservative runway (92.3 mo) satisfies the minimum threshold (10.0 mo), the strategy is deemed financially viable with bounded risk under B usage caps.",
+          "simulation_ids": [
+            "sim_b_expe_1549d2",
+            "sim_b_expe_a4e05b"
+          ],
+          "unresolved": false
+        }
+      ],
+      "tornado_sensitivity": [
+        {
+          "assumption_name": "free_to_paid_conversion",
+          "low_value": 0.025,
+          "high_value": 0.05,
+          "base_value": 0.035,
+          "unit": "rate",
+          "net_contribution_at_low": 1126421.58,
+          "net_contribution_at_high": 2131941.58,
+          "swing": 1005520.0,
+          "impact_rank": 1
+        },
+        {
+          "assumption_name": "monthly_free_signups",
+          "low_value": 2500.0,
+          "high_value": 5200.0,
+          "base_value": 3800.0,
+          "unit": "users/month",
+          "net_contribution_at_low": 1118517.09,
+          "net_contribution_at_high": 1990964.08,
+          "swing": 872446.99,
+          "impact_rank": 2
+        },
+        {
+          "assumption_name": "free_to_paid_conversion",
+          "low_value": 0.01,
+          "high_value": 0.022,
+          "base_value": 0.015,
+          "unit": "rate",
+          "net_contribution_at_low": 540427.58,
+          "net_contribution_at_high": 1009694.58,
+          "swing": 469267.0,
+          "impact_rank": 3
+        },
+        {
+          "assumption_name": "infra_cost_per_free_user",
+          "low_value": 0.75,
+          "high_value": 1.85,
+          "base_value": 1.15,
+          "unit": "USD/user/month",
+          "net_contribution_at_low": 1545735.4,
+          "net_contribution_at_high": 1496234.52,
+          "swing": 49500.88,
+          "impact_rank": 4
+        },
+        {
+          "assumption_name": "paid_to_free_cannibalization",
+          "low_value": 0.04,
+          "high_value": 0.15,
+          "base_value": 0.08,
+          "unit": "rate",
+          "net_contribution_at_low": 1536665.58,
+          "net_contribution_at_high": 1519064.58,
+          "swing": 17601.0,
+          "impact_rank": 5
+        },
+        {
+          "assumption_name": "min_acceptable_runway_months",
+          "low_value": 8.0,
+          "high_value": 12.0,
+          "base_value": 10.0,
+          "unit": "months",
+          "net_contribution_at_low": 1527735.08,
+          "net_contribution_at_high": 1527735.08,
+          "swing": 0.0,
+          "impact_rank": 6
+        },
+        {
+          "assumption_name": "activation_drop_from_gating",
+          "low_value": 0.05,
+          "high_value": 0.2,
+          "base_value": 0.1,
+          "unit": "rate",
+          "net_contribution_at_low": 1527735.08,
+          "net_contribution_at_high": 1527735.08,
+          "swing": 0.0,
+          "impact_rank": 7
+        }
+      ],
+      "flip_points": {
+        "has_flip_point": true,
+        "variable_name": "free_to_paid_conversion",
+        "threshold": 0.0061,
+        "statement": "B usage caps outperforms C no free plan only if free to paid conversion stays above 0.61%.",
+        "strategy_a": "B_usage_caps",
+        "strategy_b": "C_no_free_plan"
+      },
+      "assumption_ledger": [
+        {
+          "name": "free_to_paid_conversion",
+          "low": 0.01,
+          "base": 0.015,
+          "high": 0.022,
+          "unit": "rate",
+          "provenance": "simulated_estimate",
+          "source_ref": "cfo_cohort_analysis",
+          "confidence": 0.7,
+          "proposed_by": "CFO",
+          "challenged_by_skeptic": false
+        },
+        {
+          "name": "min_acceptable_runway_months",
+          "low": 8.0,
+          "base": 10.0,
+          "high": 12.0,
+          "unit": "months",
+          "provenance": "verified_data",
+          "source_ref": "financials.target_min_runway_months",
+          "confidence": 0.95,
+          "proposed_by": "CFO",
+          "challenged_by_skeptic": false
+        },
+        {
+          "name": "free_to_paid_conversion",
+          "low": 0.025,
+          "base": 0.035,
+          "high": 0.05,
+          "unit": "rate",
+          "provenance": "external_research",
+          "source_ref": "funnel_benchmark_survey",
+          "confidence": 0.45,
+          "proposed_by": "Growth",
+          "challenged_by_skeptic": true
+        },
+        {
+          "name": "monthly_free_signups",
+          "low": 2500.0,
+          "base": 3800.0,
+          "high": 5200.0,
+          "unit": "users/month",
+          "provenance": "simulated_estimate",
+          "source_ref": "funnel_top_estimate",
+          "confidence": 0.7,
+          "proposed_by": "Growth",
+          "challenged_by_skeptic": false
+        },
+        {
+          "name": "infra_cost_per_free_user",
+          "low": 0.75,
+          "base": 1.15,
+          "high": 1.85,
+          "unit": "USD/user/month",
+          "provenance": "verified_data",
+          "source_ref": "infrastructure.infra_cost_per_free_user_estimate",
+          "confidence": 0.88,
+          "proposed_by": "CTO",
+          "challenged_by_skeptic": false
+        },
+        {
+          "name": "paid_to_free_cannibalization",
+          "low": 0.04,
+          "base": 0.08,
+          "high": 0.15,
+          "unit": "rate",
+          "provenance": "ai_assumption",
+          "source_ref": "starter_tier_feature_overlap",
+          "confidence": 0.6,
+          "proposed_by": "Customer",
+          "challenged_by_skeptic": false
+        },
+        {
+          "name": "activation_drop_from_gating",
+          "low": 0.05,
+          "base": 0.1,
+          "high": 0.2,
+          "unit": "rate",
+          "provenance": "simulated_estimate",
+          "source_ref": "product_onboarding_benchmarks",
+          "confidence": 0.7,
+          "proposed_by": "Product",
+          "challenged_by_skeptic": false
+        }
+      ],
+      "risks_and_triggers": [
+        {
+          "risk": "Conversion degradation below threshold",
+          "trigger": "Free-to-paid conversion dips below 0.61%",
+          "mitigation": "Immediately tighten feature gates or reduce self-serve free limits."
+        },
+        {
+          "risk": "Runway compression below safety floor",
+          "trigger": "Runway falls below 10.0 months",
+          "mitigation": "Pause free tier new onboarding; migrate high-usage free users to paid Starter."
+        }
+      ],
+      "verification_summary": [
+        {
+          "check_name": "unit_consistency",
+          "status": "passed",
+          "detail": "All assumption units conform to standard taxonomy."
+        },
+        {
+          "check_name": "financial_tie_out",
+          "status": "passed",
+          "detail": "Company baseline financials, customer counts, and ARR tie out with 100% precision."
+        },
+        {
+          "check_name": "provenance_integrity",
+          "status": "passed",
+          "detail": "All verified_data assumptions trace to authentic company snapshot fields."
+        },
+        {
+          "check_name": "required_sections",
+          "status": "passed",
+          "detail": "All 10 required report sections are populated."
+        },
+        {
+          "check_name": "report_traceability",
+          "status": "passed",
+          "detail": "Every scenario table metric ties out directly to underlying SimulationRun outputs."
+        }
+      ],
+      "monte_carlo": {
+        "strategy": "B_usage_caps",
+        "n_samples": 200,
+        "seed": 42,
+        "net_contribution_12": {
+          "mean": 1678326.05,
+          "std": 293231.1,
+          "p10": 1338407.96,
+          "p50": 1652014.5,
+          "p90": 2080929.59,
+          "prob_positive": 1.0
+        },
+        "mrr_12_p50": 461690.0,
+        "runway_months_12_p50": 999.0
+      }
+    },
+    "recommendation": "Proceed with B usage caps",
+    "confidence": "High",
+    "disclaimers": [
+      "Synthetic Data Notice: All financial metrics and telemetry originate from the NimbusDesk benchmark dataset.",
+      "Deterministic Simulation Disclaimer: Outputs reflect mathematical modeling of specified assumptions, not guaranteed outcomes.",
+      "Decision Support Only: Strategic recommendations require explicit human sign-off; VentureTwin does not execute external actions."
+    ]
+  },
+  "events": [
+    {
+      "ts": "2026-11-08T11:48:22.798002+00:00",
+      "type": "task_created",
+      "agent": "supervisor",
+      "payload": {
+        "task_id": "task_cfo_analysis",
+        "owner": "cfo"
+      }
+    },
+    {
+      "ts": "2026-11-08T11:48:22.798009+00:00",
+      "type": "task_created",
+      "agent": "supervisor",
+      "payload": {
+        "task_id": "task_growth_analysis",
+        "owner": "growth"
+      }
+    },
+    {
+      "ts": "2026-11-08T11:48:22.798013+00:00",
+      "type": "task_created",
+      "agent": "supervisor",
+      "payload": {
+        "task_id": "task_cto_analysis",
+        "owner": "cto"
+      }
+    },
+    {
+      "ts": "2026-11-08T11:48:22.798015+00:00",
+      "type": "task_created",
+      "agent": "supervisor",
+      "payload": {
+        "task_id": "task_customer_analysis",
+        "owner": "customer"
+      }
+    },
+    {
+      "ts": "2026-11-08T11:48:22.798018+00:00",
+      "type": "task_created",
+      "agent": "supervisor",
+      "payload": {
+        "task_id": "task_product_analysis",
+        "owner": "product"
+      }
+    },
+    {
+      "ts": "2026-11-08T11:48:22.798020+00:00",
+      "type": "task_created",
+      "agent": "supervisor",
+      "payload": {
+        "task_id": "task_skeptic_audit",
+        "owner": "skeptic"
+      }
+    },
+    {
+      "ts": "2026-11-08T11:48:22.798021+00:00",
+      "type": "task_created",
+      "agent": "supervisor",
+      "payload": {
+        "task_id": "task_conflict_resolution",
+        "owner": "supervisor"
+      }
+    },
+    {
+      "ts": "2026-11-08T11:48:22.798023+00:00",
+      "type": "task_created",
+      "agent": "supervisor",
+      "payload": {
+        "task_id": "task_simulation_engine",
+        "owner": "supervisor"
+      }
+    },
+    {
+      "ts": "2026-11-08T11:48:22.798024+00:00",
+      "type": "task_created",
+      "agent": "supervisor",
+      "payload": {
+        "task_id": "task_workflow_verification",
+        "owner": "skeptic"
+      }
+    },
+    {
+      "ts": "2026-11-08T11:48:22.798026+00:00",
+      "type": "task_created",
+      "agent": "supervisor",
+      "payload": {
+        "task_id": "task_report_generation",
+        "owner": "supervisor"
+      }
+    },
+    {
+      "ts": "2026-11-08T11:48:22.798077+00:00",
+      "type": "agent_started",
+      "agent": "cfo",
+      "payload": {
+        "task_id": "task_cfo_analysis"
+      }
+    },
+    {
+      "ts": "2026-11-08T11:48:22.798211+00:00",
+      "type": "finding_posted",
+      "agent": "cfo",
+      "payload": {
+        "task_id": "task_cfo_analysis",
+        "finding": {
+          "agent": "CFO",
+          "task_id": "task_cfo_analysis",
+          "claim": "Runway is 13.2 months ($1.65M cash). Free plan without strict usage caps risks compressing runway below the 10.0-month safety threshold.",
+          "recommendation": "proceed_with_limits",
+          "assumptions": [
+            {
+              "name": "free_to_paid_conversion",
+              "low": 0.01,
+              "base": 0.015,
+              "high": 0.022,
+              "unit": "rate",
+              "provenance": "simulated_estimate",
+              "source_ref": "cfo_cohort_analysis",
+              "confidence": 0.7,
+              "proposed_by": "CFO",
+              "challenged_by_skeptic": false
+            },
+            {
+              "name": "min_acceptable_runway_months",
+              "low": 8.0,
+              "base": 10.0,
+              "high": 12.0,
+              "unit": "months",
+              "provenance": "verified_data",
+              "source_ref": "financials.target_min_runway_months",
+              "confidence": 0.95,
+              "proposed_by": "CFO",
+              "challenged_by_skeptic": false
+            }
+          ],
+          "evidence": [
+            {
+              "source_type": "company_data",
+              "source_ref": "financials.cash_balance",
+              "snippet": "Cash balance: $1,650,000.00, Net monthly burn: $125,000.00, Runway: 13.2 months."
+            }
+          ],
+          "confidence": 0.82,
+          "limitations": [
+            "Assumes fixed baseline opex without secondary headcount expansion."
+          ],
+          "status": "ok"
+        }
+      }
+    },
+    {
+      "ts": "2026-11-08T11:48:22.798217+00:00",
+      "type": "agent_started",
+      "agent": "growth",
+      "payload": {
+        "task_id": "task_growth_analysis"
+      }
+    },
+    {
+      "ts": "2026-11-08T11:48:22.798279+00:00",
+      "type": "finding_posted",
+      "agent": "growth",
+      "payload": {
+        "task_id": "task_growth_analysis",
+        "finding": {
+          "agent": "Growth",
+          "task_id": "task_growth_analysis",
+          "claim": "A friction-free entry tier will unlock top-of-funnel velocity, generating 3,800+ signups/mo.",
+          "recommendation": "proceed",
+          "assumptions": [
+            {
+              "name": "free_to_paid_conversion",
+              "low": 0.025,
+              "base": 0.035,
+              "high": 0.05,
+              "unit": "rate",
+              "provenance": "external_research",
+              "source_ref": "funnel_benchmark_survey",
+              "confidence": 0.65,
+              "proposed_by": "Growth",
+              "challenged_by_skeptic": false
+            },
+            {
+              "name": "monthly_free_signups",
+              "low": 2500.0,
+              "base": 3800.0,
+              "high": 5200.0,
+              "unit": "users/month",
+              "provenance": "simulated_estimate",
+              "source_ref": "funnel_top_estimate",
+              "confidence": 0.7,
+              "proposed_by": "Growth",
+              "challenged_by_skeptic": false
+            }
+          ],
+          "evidence": [
+            {
+              "source_type": "company_data",
+              "source_ref": "funnel.monthly_visitors",
+              "snippet": "Site receives 65,000 unique visitors/month with only 1100 trial starts."
+            }
+          ],
+          "confidence": 0.78,
+          "limitations": [
+            "Dependent on product onboarding self-serve experience."
+          ],
+          "status": "ok"
+        }
+      }
+    },
+    {
+      "ts": "2026-11-08T11:48:22.798284+00:00",
+      "type": "agent_started",
+      "agent": "cto",
+      "payload": {
+        "task_id": "task_cto_analysis"
+      }
+    },
+    {
+      "ts": "2026-11-08T11:48:22.798330+00:00",
+      "type": "finding_posted",
+      "agent": "cto",
+      "payload": {
+        "task_id": "task_cto_analysis",
+        "finding": {
+          "agent": "CTO",
+          "task_id": "task_cto_analysis",
+          "claim": "Infrastructure can absorb up to 5,000 free users if rate limits and database storage quotas are strictly capped.",
+          "recommendation": "proceed_with_limits",
+          "assumptions": [
+            {
+              "name": "infra_cost_per_free_user",
+              "low": 0.75,
+              "base": 1.15,
+              "high": 1.85,
+              "unit": "USD/user/month",
+              "provenance": "verified_data",
+              "source_ref": "infrastructure.infra_cost_per_free_user_estimate",
+              "confidence": 0.88,
+              "proposed_by": "CTO",
+              "challenged_by_skeptic": false
+            }
+          ],
+          "evidence": [
+            {
+              "source_type": "company_data",
+              "source_ref": "infrastructure.monthly_cloud_cost",
+              "snippet": "Baseline cloud spend is $14,500/mo; estimated free-user cost is $1.15/user/mo."
+            }
+          ],
+          "confidence": 0.85,
+          "limitations": [
+            "Requires engineering to implement Redis-based quota enforcers."
+          ],
+          "status": "ok"
+        }
+      }
+    },
+    {
+      "ts": "2026-11-08T11:48:22.798334+00:00",
+      "type": "agent_started",
+      "agent": "customer",
+      "payload": {
+        "task_id": "task_customer_analysis"
+      }
+    },
+    {
+      "ts": "2026-11-08T11:48:22.798371+00:00",
+      "type": "finding_posted",
+      "agent": "customer",
+      "payload": {
+        "task_id": "task_customer_analysis",
+        "finding": {
+          "agent": "Customer",
+          "task_id": "task_customer_analysis",
+          "claim": "Starter plan ($79/mo) faces cannibalization risk of 8-15% if the free tier includes exports or integrations.",
+          "recommendation": "proceed_with_limits",
+          "assumptions": [
+            {
+              "name": "paid_to_free_cannibalization",
+              "low": 0.04,
+              "base": 0.08,
+              "high": 0.15,
+              "unit": "rate",
+              "provenance": "ai_assumption",
+              "source_ref": "starter_tier_feature_overlap",
+              "confidence": 0.6,
+              "proposed_by": "Customer",
+              "challenged_by_skeptic": false
+            }
+          ],
+          "evidence": [
+            {
+              "source_type": "company_data",
+              "source_ref": "customers.total_paying",
+              "snippet": "Currently 655 active paying subscribers, with 450 on Starter ($79/mo)."
+            }
+          ],
+          "confidence": 0.72,
+          "limitations": [
+            "Survey sample on Starter users is limited to last quarter."
+          ],
+          "status": "ok"
+        }
+      }
+    },
+    {
+      "ts": "2026-11-08T11:48:22.798374+00:00",
+      "type": "agent_started",
+      "agent": "product",
+      "payload": {
+        "task_id": "task_product_analysis"
+      }
+    },
+    {
+      "ts": "2026-11-08T11:48:22.798386+00:00",
+      "type": "finding_posted",
+      "agent": "product",
+      "payload": {
+        "task_id": "task_product_analysis",
+        "finding": {
+          "agent": "Product",
+          "task_id": "task_product_analysis",
+          "claim": "Strategy B (Usage Caps) creates the most natural friction point for self-serve upgrades without gating essential utility.",
+          "recommendation": "proceed_with_limits",
+          "assumptions": [
+            {
+              "name": "activation_drop_from_gating",
+              "low": 0.05,
+              "base": 0.1,
+              "high": 0.2,
+              "unit": "rate",
+              "provenance": "simulated_estimate",
+              "source_ref": "product_onboarding_benchmarks",
+              "confidence": 0.7,
+              "proposed_by": "Product",
+              "challenged_by_skeptic": false
+            }
+          ],
+          "evidence": [
+            {
+              "source_type": "calculation",
+              "source_ref": "feature_matrix",
+              "snippet": "Capping at 3 team members and 500 tickets/mo protects 92% of Starter value proposition."
+            }
+          ],
+          "confidence": 0.8,
+          "limitations": [
+            "Depends on UI upgrade prompts deployed in app."
+          ],
+          "status": "ok"
+        }
+      }
+    },
+    {
+      "ts": "2026-11-08T11:48:22.801008+00:00",
+      "type": "agent_started",
+      "agent": "skeptic",
+      "payload": {
+        "task_id": "task_skeptic_audit"
+      }
+    },
+    {
+      "ts": "2026-11-08T11:48:22.801033+00:00",
+      "type": "finding_posted",
+      "agent": "skeptic",
+      "payload": {
+        "task_id": "task_skeptic_audit",
+        "finding": {
+          "agent": "Skeptic",
+          "task_id": "task_skeptic_audit",
+          "claim": "Challenged 1 assumption(s). Growth's conversion estimate of 3.5% lacks historical self-serve telemetry in NimbusDesk's data and carries external research provenance.",
+          "recommendation": "proceed_with_limits",
+          "assumptions": [],
+          "evidence": [
+            {
+              "source_type": "calculation",
+              "source_ref": "skeptic_audit_log",
+              "snippet": "Downgraded confidence on 1 speculative assumption(s)."
+            }
+          ],
+          "confidence": 0.9,
+          "limitations": [
+            "Skeptic review based strictly on submitted findings and historical data."
+          ],
+          "status": "ok"
+        }
+      }
+    },
+    {
+      "ts": "2026-11-08T11:48:22.801681+00:00",
+      "type": "agent_started",
+      "agent": "supervisor",
+      "payload": {
+        "task_id": "task_conflict_resolution"
+      }
+    },
+    {
+      "ts": "2026-11-08T11:48:22.801755+00:00",
+      "type": "conflict_detected",
+      "agent": "supervisor",
+      "payload": {
+        "conflict_id": "conf_rec_2992c3",
+        "type": "contradictory_recommendations",
+        "disputed_item": "decision_recommendation"
+      }
+    },
+    {
+      "ts": "2026-11-08T11:48:22.801953+00:00",
+      "type": "conflict_detected",
+      "agent": "supervisor",
+      "payload": {
+        "conflict_id": "conf_rec_693344",
+        "type": "contradictory_recommendations",
+        "disputed_item": "decision_recommendation"
+      }
+    },
+    {
+      "ts": "2026-11-08T11:48:22.802113+00:00",
+      "type": "conflict_detected",
+      "agent": "supervisor",
+      "payload": {
+        "conflict_id": "conf_rec_0ee47a",
+        "type": "contradictory_recommendations",
+        "disputed_item": "decision_recommendation"
+      }
+    },
+    {
+      "ts": "2026-11-08T11:48:22.802263+00:00",
+      "type": "conflict_detected",
+      "agent": "supervisor",
+      "payload": {
+        "conflict_id": "conf_rec_0a176b",
+        "type": "contradictory_recommendations",
+        "disputed_item": "decision_recommendation"
+      }
+    },
+    {
+      "ts": "2026-11-08T11:48:22.802417+00:00",
+      "type": "conflict_detected",
+      "agent": "supervisor",
+      "payload": {
+        "conflict_id": "conf_rec_dbfc5a",
+        "type": "contradictory_recommendations",
+        "disputed_item": "decision_recommendation"
+      }
+    },
+    {
+      "ts": "2026-11-08T11:48:22.802581+00:00",
+      "type": "conflict_detected",
+      "agent": "supervisor",
+      "payload": {
+        "conflict_id": "conf_range_09f69f",
+        "type": "non_overlapping_ranges",
+        "disputed_item": "free_to_paid_conversion"
+      }
+    },
+    {
+      "ts": "2026-11-08T11:48:22.803156+00:00",
+      "type": "agent_started",
+      "agent": "supervisor",
+      "payload": {
+        "task_id": "task_simulation_engine"
+      }
+    },
+    {
+      "ts": "2026-11-08T11:48:22.803270+00:00",
+      "type": "simulation_run",
+      "agent": "supervisor",
+      "payload": {
+        "simulation_id": "sim_a_cons_d87fb4",
+        "strategy": "A_limited_features",
+        "scenario": "conservative"
+      }
+    },
+    {
+      "ts": "2026-11-08T11:48:22.803344+00:00",
+      "type": "simulation_run",
+      "agent": "supervisor",
+      "payload": {
+        "simulation_id": "sim_a_expe_89c3db",
+        "strategy": "A_limited_features",
+        "scenario": "expected"
+      }
+    },
+    {
+      "ts": "2026-11-08T11:48:22.803419+00:00",
+      "type": "simulation_run",
+      "agent": "supervisor",
+      "payload": {
+        "simulation_id": "sim_a_opti_2e070f",
+        "strategy": "A_limited_features",
+        "scenario": "optimistic"
+      }
+    },
+    {
+      "ts": "2026-11-08T11:48:22.803493+00:00",
+      "type": "simulation_run",
+      "agent": "supervisor",
+      "payload": {
+        "simulation_id": "sim_a_stre_45dd6a",
+        "strategy": "A_limited_features",
+        "scenario": "stress_infra"
+      }
+    },
+    {
+      "ts": "2026-11-08T11:48:22.803569+00:00",
+      "type": "simulation_run",
+      "agent": "supervisor",
+      "payload": {
+        "simulation_id": "sim_b_cons_2b35be",
+        "strategy": "B_usage_caps",
+        "scenario": "conservative"
+      }
+    },
+    {
+      "ts": "2026-11-08T11:48:22.803644+00:00",
+      "type": "simulation_run",
+      "agent": "supervisor",
+      "payload": {
+        "simulation_id": "sim_b_expe_756fb6",
+        "strategy": "B_usage_caps",
+        "scenario": "expected"
+      }
+    },
+    {
+      "ts": "2026-11-08T11:48:22.803718+00:00",
+      "type": "simulation_run",
+      "agent": "supervisor",
+      "payload": {
+        "simulation_id": "sim_b_opti_2a2439",
+        "strategy": "B_usage_caps",
+        "scenario": "optimistic"
+      }
+    },
+    {
+      "ts": "2026-11-08T11:48:22.803796+00:00",
+      "type": "simulation_run",
+      "agent": "supervisor",
+      "payload": {
+        "simulation_id": "sim_b_stre_f49854",
+        "strategy": "B_usage_caps",
+        "scenario": "stress_infra"
+      }
+    },
+    {
+      "ts": "2026-11-08T11:48:22.803871+00:00",
+      "type": "simulation_run",
+      "agent": "supervisor",
+      "payload": {
+        "simulation_id": "sim_c_cons_199c6a",
+        "strategy": "C_no_free_plan",
+        "scenario": "conservative"
+      }
+    },
+    {
+      "ts": "2026-11-08T11:48:22.803944+00:00",
+      "type": "simulation_run",
+      "agent": "supervisor",
+      "payload": {
+        "simulation_id": "sim_c_expe_e1fc87",
+        "strategy": "C_no_free_plan",
+        "scenario": "expected"
+      }
+    },
+    {
+      "ts": "2026-11-08T11:48:22.804017+00:00",
+      "type": "simulation_run",
+      "agent": "supervisor",
+      "payload": {
+        "simulation_id": "sim_c_opti_9f8398",
+        "strategy": "C_no_free_plan",
+        "scenario": "optimistic"
+      }
+    },
+    {
+      "ts": "2026-11-08T11:48:22.804088+00:00",
+      "type": "simulation_run",
+      "agent": "supervisor",
+      "payload": {
+        "simulation_id": "sim_c_stre_f45249",
+        "strategy": "C_no_free_plan",
+        "scenario": "stress_infra"
+      }
+    },
+    {
+      "ts": "2026-11-08T11:48:22.822816+00:00",
+      "type": "agent_started",
+      "agent": "skeptic",
+      "payload": {
+        "task_id": "task_workflow_verification"
+      }
+    },
+    {
+      "ts": "2026-11-08T11:48:22.822965+00:00",
+      "type": "verification_passed",
+      "agent": "skeptic",
+      "payload": {
+        "all_passed": true,
+        "results": [
+          {
+            "check_name": "unit_consistency",
+            "status": "passed",
+            "detail": "All assumption units conform to standard taxonomy."
+          },
+          {
+            "check_name": "financial_tie_out",
+            "status": "passed",
+            "detail": "Company baseline financials, customer counts, and ARR tie out with 100% precision."
+          },
+          {
+            "check_name": "provenance_integrity",
+            "status": "passed",
+            "detail": "All verified_data assumptions trace to authentic company snapshot fields."
+          },
+          {
+            "check_name": "required_sections",
+            "status": "passed",
+            "detail": "All 10 required report sections are populated."
+          },
+          {
+            "check_name": "report_traceability",
+            "status": "passed",
+            "detail": "Every scenario table metric ties out directly to underlying SimulationRun outputs."
+          }
+        ]
+      }
+    },
+    {
+      "ts": "2026-11-08T11:48:22.823749+00:00",
+      "type": "agent_started",
+      "agent": "supervisor",
+      "payload": {
+        "task_id": "task_report_generation"
+      }
+    },
+    {
+      "ts": "2026-11-08T11:48:22.823848+00:00",
+      "type": "report_ready",
+      "agent": "supervisor",
+      "payload": {
+        "decision_id": "dec_175709d1",
+        "recommendation": "Proceed with B usage caps"
+      }
+    }
+  ],
+  "status": "completed",
+  "degraded_agents": [],
+  "round": 1,
+  "max_rounds": 3
+}
