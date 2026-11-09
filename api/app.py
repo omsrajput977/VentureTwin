@@ -1,8 +1,19 @@
 import os
 import json
 import asyncio
+from pathlib import Path
 from datetime import datetime, timezone
 from typing import Dict, Any, List, Optional, Literal
+
+# Load local .env into os.environ if present
+_env_path = Path(__file__).resolve().parent.parent / ".env"
+if _env_path.exists():
+    with open(_env_path, "r", encoding="utf-8") as _f:
+        for _line in _f:
+            _line = _line.strip()
+            if _line and not _line.startswith("#") and "=" in _line:
+                _k, _v = _line.split("=", 1)
+                os.environ[_k.strip()] = _v.strip().strip('"').strip("'")
 from fastapi import FastAPI, HTTPException, BackgroundTasks
 from fastapi.responses import StreamingResponse, FileResponse
 from fastapi.staticfiles import StaticFiles
@@ -102,6 +113,16 @@ async def health(probe: bool = False):
                 status_code=500,
                 detail="ConfigurationError: LLM_MODE is real/record and provider is anthropic but ANTHROPIC_API_KEY is not set."
             )
+        elif provider == "cerebras" and not (os.getenv("CEREBRAS_API_KEY") or os.getenv("LLM_API_KEY")):
+            raise HTTPException(
+                status_code=500,
+                detail="ConfigurationError: LLM_MODE is real/record and provider is cerebras but CEREBRAS_API_KEY is not set."
+            )
+        elif provider == "groq" and not (os.getenv("GROQ_API_KEY") or os.getenv("LLM_API_KEY")):
+            raise HTTPException(
+                status_code=500,
+                detail="ConfigurationError: LLM_MODE is real/record and provider is groq but GROQ_API_KEY is not set."
+            )
         elif provider == "openai_compatible" and not (os.getenv("LLM_API_KEY") or os.getenv("OPENAI_API_KEY")):
             raise HTTPException(
                 status_code=500,
@@ -138,7 +159,7 @@ async def get_company():
 @app.post("/api/decisions")
 async def submit_decision(req: DecisionRequest, background_tasks: BackgroundTasks):
     """Submits a strategic decision query and launches the multi-agent workflow."""
-    decision = parse_decision_query(req.query, req.constraints)
+    decision = parse_decision_query(req.query, req.constraints, allow_all=True)
     
     supervisor = Supervisor()
     active_supervisors[decision.id] = supervisor

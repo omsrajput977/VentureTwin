@@ -21,6 +21,8 @@ if env_file.exists():
                 k, v = line.split("=", 1)
                 os.environ.setdefault(k.strip(), v.strip().strip('"').strip("'"))
 
+sys.path.insert(0, str(Path(__file__).resolve().parent.parent))
+
 from orchestrator.supervisor import Supervisor
 from orchestrator.parser import parse_decision_query
 from agents.llm_client import LLMClient
@@ -92,9 +94,8 @@ async def main():
 {chr(10).join(conflicts_summary) if conflicts_summary else "No conflicts detected."}
 
 ## Verification Results
-- Verified: {state.verification_result.verified if state.verification_result else 'N/A'}
-- Checks Passed: {len([c for c in (state.verification_result.checks if state.verification_result else []) if c.passed])}
-- Tamper Flag: {state.verification_result.tamper_detected if state.verification_result else False}
+- Verified: {all(r.status == 'passed' for r in state.verification_results) if state.verification_results else 'N/A'}
+- Checks Passed: {len([r for r in state.verification_results if r.status == 'passed']) if state.verification_results else 0} / {len(state.verification_results) if state.verification_results else 0}
 """
     report_file = Path("docs/REAL_RUN_REPORT.md")
     report_file.parent.mkdir(parents=True, exist_ok=True)

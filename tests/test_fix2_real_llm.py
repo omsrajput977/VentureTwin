@@ -53,3 +53,4 @@ def test_prompt_stability_clean_prompt_for_cache():
     c1 = clean_prompt_for_cache(p1)
     c2 = clean_prompt_for_cache(p2)
     assert c1 == c2
+

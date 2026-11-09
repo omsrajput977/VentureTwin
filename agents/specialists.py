@@ -1,7 +1,7 @@
 import json
 import copy
 from typing import Dict, Any, Optional, List, Tuple, Callable, Type
-from pydantic import BaseModel, Field
+from pydantic import BaseModel, Field, model_validator
 from agents.base_agent import BaseAgent
 from agents.llm_client import LLMClient, llm_call
 from state.schemas import (
@@ -150,16 +150,17 @@ class BaseAnalysisAgent(BaseAgent):
         self.tool_names = tool_names or list(self.tools.keys())
         self.prompt_guidance = prompt_guidance
 
-    def build_prompt(self, tool_data: Dict[str, Any]) -> str:
+    def build_prompt(self, tool_data: Dict[str, Any], question: Optional[str] = None) -> str:
         sim_table = format_sim_params_table()
         valid_bases = get_valid_basis_list()
         schema_json = get_inlined_draft_schema()
+        decision_q = question or "Evaluate decision to launch a free tier."
 
         return (
             f"Agent Key: {self.agent_key}\n"
             f"Role: {self.role}\n"
             f"Objective: {self.objective}\n\n"
-            f"Decision Question: Evaluate decision to launch a free tier.\n"
+            f"Strategic Decision Question: {decision_q}\n"
             f"Tool Data:\n{json.dumps(tool_data, indent=2)}\n\n"
             f"Allowed Simulator Parameters (Table):\n{sim_table}\n\n"
             "RULES FOR ASSUMPTIONS:\n"
@@ -232,7 +233,9 @@ class BaseAnalysisAgent(BaseAgent):
         company_data = load_company_data()
         benchmarks = {b["id"] for b in load_benchmarks()}
 
-        prompt = self.build_prompt(tool_data)
+        decision = context.get("decision") if context else None
+        q_text = getattr(decision, "question", None) if decision else None
+        prompt = self.build_prompt(tool_data, question=q_text)
 
         draft: AgentFindingDraft = await llm_call(
             prompt=prompt,
@@ -342,6 +345,13 @@ class SkepticAuditDraft(BaseModel):
     critiques: List[Critique] = Field(default_factory=list)
     audit_summary: str = Field(default="Skeptic audit completed.")
 
+    @model_validator(mode="before")
+    @classmethod
+    def wrap_list(cls, data: Any) -> Any:
+        if isinstance(data, list):
+            return {"critiques": data, "audit_summary": "Skeptic audit completed."}
+        return data
+
 
 class SkepticAgent(BaseAgent):
     def __init__(self):
@@ -352,7 +362,8 @@ class SkepticAgent(BaseAgent):
             system_prompt=(
                 "You are the Skeptic. You scrutinize assumptions from Growth, CFO, and other agents. "
                 "Expose unproven extrapolations, missing controls, and demand provenance verification."
-            )
+            ),
+            timeout_seconds=90.0
         )
 
     async def _execute_core(
@@ -366,50 +377,56 @@ class SkepticAgent(BaseAgent):
 
         benchmarks = {b["id"]: b for b in load_benchmarks()}
 
-        # If LLM client is real or record or replay, call LLM over peer findings
+        llm_succeeded = False
         if llm_client and llm_client.mode in ["real", "record", "replay"]:
-            summary_findings = [
-                {
-                    "agent": f.agent,
-                    "claim": f.claim,
-                    "recommendation": f.recommendation,
-                    "assumptions": [a.model_dump() for a in f.assumptions],
-                    "evidence": [e.model_dump() for e in f.evidence]
-                }
-                for f in findings
-            ]
-            prompt = (
-                f"Role: {self.role}\n"
-                f"Objective: {self.objective}\n\n"
-                f"Peer Agent Findings:\n{json.dumps(summary_findings, indent=2)}\n\n"
-                f"Industry Benchmarks:\n{json.dumps(list(benchmarks.values()), indent=2)}\n\n"
-                "Audit the submitted assumptions against industry benchmarks and telemetry evidence. "
-                "Challenge any optimistic or ungrounded bounds. Return Critique objects matching the schema."
-            )
-            audit_draft: SkepticAuditDraft = await llm_call(
-                prompt=prompt,
-                response_model=SkepticAuditDraft,
-                system_prompt=self.system_prompt,
-                client=llm_client,
-                metadata={"agent_key": "skeptic", "task_kind": "skeptic_audit"}
-            )
-            for crit in audit_draft.critiques:
-                ch = {
-                    "agent": crit.target_agent,
-                    "assumption": crit.target_parameter,
-                    "challenge": crit.concern,
-                    "severity": crit.severity,
-                    "confidence_penalty": 0.15 if crit.severity == "high" else 0.10
-                }
-                challenges.append(ch)
-                if "state" in context:
-                    context["state"].skeptic_challenges.append(ch)
+            try:
+                summary_findings = [
+                    {
+                        "agent": f.agent,
+                        "claim": f.claim,
+                        "recommendation": f.recommendation,
+                        "assumptions": [a.model_dump() for a in f.assumptions],
+                        "evidence": [e.model_dump() for e in f.evidence]
+                    }
+                    for f in findings
+                ]
+                prompt = (
+                    f"Role: {self.role}\n"
+                    f"Objective: {self.objective}\n\n"
+                    f"Peer Agent Findings:\n{json.dumps(summary_findings, indent=2)}\n\n"
+                    f"Industry Benchmarks:\n{json.dumps(list(benchmarks.values()), indent=2)}\n\n"
+                    "Audit the submitted assumptions against industry benchmarks and telemetry evidence. "
+                    "Challenge any optimistic or ungrounded bounds. Return Critique objects matching the schema."
+                )
+                audit_draft: SkepticAuditDraft = await llm_call(
+                    prompt=prompt,
+                    response_model=SkepticAuditDraft,
+                    system_prompt=self.system_prompt,
+                    client=llm_client,
+                    metadata={"agent_key": "skeptic", "task_kind": "skeptic_audit"}
+                )
+                for crit in audit_draft.critiques:
+                    ch = {
+                        "agent": crit.target_agent,
+                        "assumption": crit.target_parameter,
+                        "challenge": crit.concern,
+                        "severity": crit.severity,
+                        "confidence_penalty": 0.15 if crit.severity == "high" else 0.10
+                    }
+                    challenges.append(ch)
+                    if "state" in context:
+                        context["state"].skeptic_challenges.append(ch)
 
-            claim = (
-                f"Audited peer assumptions with LLM Skeptic. Challenged {len(challenges)} assumption(s)."
-                if challenges else "All peer assumptions verified against benchmarks."
-            )
-        else:
+                claim = (
+                    f"Audited peer assumptions with LLM Skeptic. Challenged {len(challenges)} assumption(s)."
+                    if challenges else "All peer assumptions verified against benchmarks."
+                )
+                llm_succeeded = True
+            except Exception as e:
+                logger.warning(f"Skeptic LLM call failed ({e}). Falling back to deterministic benchmark audit.")
+                self.is_degraded = True
+
+        if not llm_succeeded:
             # Deterministic mock check across all simulated parameters with benchmarks
             for f in findings:
                 for asm in f.assumptions:

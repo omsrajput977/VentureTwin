@@ -18,7 +18,7 @@ class BaseAgent:
         objective: str,
         system_prompt: str,
         tools: Optional[Dict[str, Callable]] = None,
-        timeout_seconds: float = 30.0
+        timeout_seconds: float = 120.0
     ):
         self.name = name
         self.role = role

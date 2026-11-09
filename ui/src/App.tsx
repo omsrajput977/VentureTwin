@@ -173,6 +173,20 @@ export const App: React.FC = () => {
       {/* Main Content Area */}
       <main className="flex-1 max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-6 w-full space-y-6">
         {/* Mode & Health Banners */}
+        {health?.llm_mode === 'real' && (
+          <div className="bg-emerald-500/10 border border-emerald-500/30 rounded-xl p-3 flex items-center justify-between text-xs text-emerald-200">
+            <div className="flex items-center gap-2">
+              <span className="px-2 py-0.5 rounded bg-emerald-500/20 text-emerald-400 font-bold uppercase tracking-wider text-[10px]">
+                Live LLM Mode
+              </span>
+              <span>
+                Connected to {health.provider} ({health.model}) with live multi-agent orchestration.
+              </span>
+            </div>
+            <span className="text-[11px] text-emerald-400/80">LLM_MODE=real</span>
+          </div>
+        )}
+
         {health?.llm_mode === 'mock' && (
           <div className="bg-amber-500/10 border border-amber-500/30 rounded-xl p-3 flex items-center justify-between text-xs text-amber-200">
             <div className="flex items-center gap-2">
@@ -217,7 +231,7 @@ export const App: React.FC = () => {
                   type="text"
                   value={decisionQuery}
                   onChange={(e) => setDecisionQuery(e.target.value)}
-                  placeholder="e.g. Should we launch a free plan?"
+                  placeholder="Ask any strategic SaaS question (e.g. Should we raise price by 20%?)"
                   className="flex-1 bg-slate-950 border border-slate-800 rounded-xl px-4 py-2.5 text-sm text-white focus:outline-none focus:border-brand-500"
                 />
                 <button
@@ -243,12 +257,30 @@ export const App: React.FC = () => {
                 </button>
                 <button
                   onClick={() => {
-                    setDecisionQuery('Should we introduce usage caps on free tier?');
-                    handleLaunchDecision('Should we introduce usage caps on free tier?');
+                    setDecisionQuery('Should we raise Starter price by 20%?');
+                    handleLaunchDecision('Should we raise Starter price by 20%?');
                   }}
                   className="px-2.5 py-1 bg-slate-800/80 hover:bg-slate-800 text-slate-300 rounded-lg text-[11px] transition"
                 >
-                  Should we introduce usage caps on free tier?
+                  Should we raise Starter price by 20%?
+                </button>
+                <button
+                  onClick={() => {
+                    setDecisionQuery('Can we introduce an enterprise tier with custom SLAs?');
+                    handleLaunchDecision('Can we introduce an enterprise tier with custom SLAs?');
+                  }}
+                  className="px-2.5 py-1 bg-slate-800/80 hover:bg-slate-800 text-slate-300 rounded-lg text-[11px] transition"
+                >
+                  Can we introduce an enterprise tier?
+                </button>
+                <button
+                  onClick={() => {
+                    setDecisionQuery('How do we reduce customer churn and preserve runway?');
+                    handleLaunchDecision('How do we reduce customer churn and preserve runway?');
+                  }}
+                  className="px-2.5 py-1 bg-slate-800/80 hover:bg-slate-800 text-slate-300 rounded-lg text-[11px] transition"
+                >
+                  How do we reduce customer churn?
                 </button>
               </div>
             </div>

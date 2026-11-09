@@ -24,3 +24,4 @@ async def test_live_gemini_call():
     res = await client.call(prompt, EchoSchema)
     assert isinstance(res, EchoSchema)
     assert res.status == "ok"
+

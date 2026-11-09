@@ -29,3 +29,16 @@ def test_freemium_queries_remain_supported():
         dag = decompose_decision(d)
         assert dag.validate() is True
 
+def test_frontend_allow_all_supports_any_question():
+    """Verifies frontend dynamic query intake accepts arbitrary strategic questions."""
+    for q in [
+        "What if we raise Starter price by 15%?",
+        "Should we hire 5 enterprise sales reps?",
+        "Can we launch an enterprise tier with custom SLAs?",
+        "How do we reduce customer churn and protect runway?"
+    ]:
+        d = parse_decision_query(q, allow_all=True)
+        assert d.type == "free_plan"
+        assert d.question == q
+        dag = decompose_decision(d)
+        assert dag.validate() is True

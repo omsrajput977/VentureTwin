@@ -91,7 +91,21 @@ tests/test_step9.py ....
 | **Fix 7** | Comprehensive Acceptance Suite V4 | `Implemented` | `tests/test_acceptance_v4.py` (10 passed, 1 skipped when `RUN_LIVE_LLM!=1`). Covers all 11 Section 3 acceptance criteria: distinct mock agents with distinct parameter proposals, 10-run order independence with deterministic IDs, cash reduction data sensitivity, graceful degradation under persistent agent failure, terminal workflow failure on supervisor task exception, simulation-driven conflict resolution, direction-aware flip point, multi-strategy Monte Carlo with shared draws, safe handling of extreme constraints, data sensitivity cash reduction, and live LLM verification gate. |
 | **Fix 8** | Hygiene, Configuration, CI & Documentation | `Implemented` | `.env.example` with mode/provider/concurrency options; `/api/health` with comprehensive provider validation and local default CORS origins; `.gitignore` ignoring `.env` and `*.db` / `venturetwin_checkpoints.db` while preserving `tests/cassettes/`; generic AST-level UI check in `ui/scripts/check-no-fake-numbers.mjs`; GitHub Actions CI workflow in `.github/workflows/ci.yml` and manual live Gemini workflow `.github/workflows/live_gemini.yml`; complete rewrite of `README.md` with honest synthetic badges, LLM modes documentation, architecture diagrams, and custom executor justification; updated `docs/DEMO_SCRIPT.md`. |
 
-**Latest Suite Result:** `148 passed, 3 skipped in 11.88s` (UI prebuild number audit & Vite build clean).
+**Latest Suite Result:** `149 passed, 3 skipped in 12.32s` (UI prebuild number audit & Vite build clean).
+
+---
+
+## Live Multi-Provider & Rate Limit Hardening Progress
+
+| Component | Status | Description & Evidence |
+|---|---|---|
+| **Any-Question Strategic Intake** | `Implemented` | `orchestrator/parser.py` supports `allow_all=True` for FastAPI `/api/decisions`, routing arbitrary queries (pricing, churn, enterprise, feature gating) dynamically to specialist agents while preserving strict validation in offline tests. |
+| **Agent Prompt Specialization** | `Implemented` | `BaseAnalysisAgent.build_prompt()` directly injects `Strategic Decision Question: {decision_q}` into the prompt context for real reasoning across all 5 specialist agents. |
+| **Pydantic Schema Normalization** | `Implemented` | `Critique` and `Rebuttal` schemas handle case-insensitivity, field aliases (`target_assumption` -> `target_parameter`, `justification` -> `rationale`), and wrap bare list outputs in `SkepticAuditDraft`. |
+| **Rate Limit Protection & Pacing** | `Implemented` | Added async token pacing (`LLM_REQUEST_INTERVAL=4.0` for Gemini, `0.5` for Groq/OpenAI, `0.2` for Cerebras) to guarantee execution stays under RPM quotas; serialized concurrency (`LLM_MAX_CONCURRENCY=1` or `2`). |
+| **Multi-Provider Architecture** | `Implemented` | Added first-class support for `cerebras` (`qwen-3.8-27b`, 450 RPM / 648k RPD), `groq` (`https://api.groq.com/openai/v1`), `gemini`, and `openai`. Diagnostic tools: `scripts/check_provider.py`, `scripts/check_cerebras.py`, `scripts/check_openai.py`, and `scripts/list_groq_models.py`. |
+| **Autonomous Resilience Fallback** | `Implemented` | In real mode, if all provider retries are exhausted (due to `429` rate limit / quota exhaustion), `LLMClient` engages autonomous resilience fallback, routing through the deterministic telemetry handler to complete the simulation, run verification, and mark agents degraded/recovered rather than failing terminally. |
+
 
 
 

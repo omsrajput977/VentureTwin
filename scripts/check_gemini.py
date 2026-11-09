@@ -13,6 +13,8 @@ import asyncio
 from pathlib import Path
 from pydantic import BaseModel
 
+sys.path.insert(0, str(Path(__file__).resolve().parent.parent))
+
 # Load .env if present
 env_file = Path(__file__).resolve().parent.parent / ".env"
 if env_file.exists():
@@ -89,3 +91,4 @@ async def main():
 
 if __name__ == "__main__":
     asyncio.run(main())
+

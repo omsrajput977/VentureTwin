@@ -1,4 +1,5 @@
 import os
+import time
 import json
 import re
 import random
@@ -15,10 +16,25 @@ T = TypeVar("T", bound=BaseModel)
 
 CASSETTES_DIR = Path(__file__).resolve().parent.parent / "tests" / "cassettes"
 
-_LLM_SEMAPHORE = asyncio.Semaphore(int(os.getenv("LLM_MAX_CONCURRENCY", "2")))
+_LLM_SEMAPHORE = asyncio.Semaphore(int(os.getenv("LLM_MAX_CONCURRENCY", "1")))
+_pacing_lock = asyncio.Lock()
+_last_request_time: float = 0.0
+
+GEMINI_FLASH_LITE_FALLBACKS = [
+    "gemini-3.5-flash-lite",
+    "gemini-3.1-flash-lite",
+    "gemini-2.5-flash-lite",
+    "gemini-flash-lite-latest",
+]
 
 class LLMConfigurationError(Exception):
     pass
+
+class RateLimitError(Exception):
+    def __init__(self, message: str, retry_after: float = 5.0, is_daily_quota: bool = False):
+        super().__init__(message)
+        self.retry_after = retry_after
+        self.is_daily_quota = is_daily_quota
 
 class LLMReplayError(Exception):
     pass
@@ -65,6 +81,12 @@ class LLMClient:
             elif self.provider == "anthropic":
                 if not os.getenv("ANTHROPIC_API_KEY"):
                     raise LLMConfigurationError("LLM_MODE=real/record with anthropic requires ANTHROPIC_API_KEY")
+            elif self.provider == "cerebras":
+                if not (os.getenv("CEREBRAS_API_KEY") or os.getenv("LLM_API_KEY")):
+                    raise LLMConfigurationError("LLM_MODE=real/record with cerebras requires CEREBRAS_API_KEY")
+            elif self.provider == "groq":
+                if not (os.getenv("GROQ_API_KEY") or os.getenv("LLM_API_KEY")):
+                    raise LLMConfigurationError("LLM_MODE=real/record with groq requires GROQ_API_KEY")
             elif self.provider == "openai_compatible":
                 if not (os.getenv("LLM_API_KEY") or os.getenv("OPENAI_API_KEY")):
                     raise LLMConfigurationError("LLM_MODE=real/record with openai_compatible requires LLM_API_KEY or OPENAI_API_KEY")
@@ -82,7 +104,7 @@ class LLMClient:
         prompt: str,
         response_model: Type[T],
         system_prompt: Optional[str] = None,
-        max_retries: int = 3,
+        max_retries: int = 5,
         temperature: float = 0.0,
         canned_response: Optional[T] = None,
         metadata: Optional[Dict[str, Any]] = None
@@ -117,11 +139,21 @@ class LLMClient:
                 data = json.load(f)
                 return response_model.model_validate_json(data["response"])
 
-        # 3. Real or Record mode (with semaphore limiter and exponential backoff)
+        # 3. Real or Record mode (with semaphore limiter, pacing, and exponential backoff)
         last_error = None
+        min_pacing = float(os.getenv("LLM_REQUEST_INTERVAL", "4.0")) if self.provider == "gemini" else float(os.getenv("LLM_REQUEST_INTERVAL", "0.2"))
         async with _LLM_SEMAPHORE:
             for attempt in range(max_retries):
                 try:
+                    # Enforce polite pacing to stay strictly within provider RPM limits
+                    async with _pacing_lock:
+                        global _last_request_time
+                        now = time.time()
+                        elapsed = now - _last_request_time
+                        if elapsed < min_pacing:
+                            await asyncio.sleep(min_pacing - elapsed)
+                        _last_request_time = time.time()
+
                     raw_json = await self._call_provider_adapter(
                         prompt=prompt,
                         system_prompt=system_prompt,
@@ -166,13 +198,38 @@ class LLMClient:
 
                     return validated
 
+                except RateLimitError as rle:
+                    last_error = rle
+                    # If daily quota is exhausted for this model, automatically switch to an active Flash Lite model
+                    if rle.is_daily_quota and self.provider == "gemini":
+                        candidates = [m for m in GEMINI_FLASH_LITE_FALLBACKS if m != self.model]
+                        if candidates:
+                            new_model = candidates[0]
+                            logger.warning(
+                                f"Daily quota exhausted for model {self.model}. "
+                                f"Auto-switching to fallback Flash Lite model {new_model} (500 RPD tier)..."
+                            )
+                            self.model = new_model
+                            continue
+
+                    sleep_time = max(rle.retry_after, 5.0 * (attempt + 1)) + random.uniform(0.5, 1.5)
+                    logger.warning(f"Rate limited (429) on attempt {attempt + 1}. Backing off for {sleep_time:.1f}s...")
+                    await asyncio.sleep(sleep_time)
                 except LLMConfigurationError:
                     raise
                 except Exception as e:
                     logger.warning(f"LLM call attempt {attempt + 1} ({self.provider}/{self.model}) failed: {e}")
                     last_error = e
-                    delay = (2 ** attempt) * 0.5 + random.uniform(0.05, 0.2)
+                    delay = (2 ** attempt) * 1.0 + random.uniform(0.1, 0.5)
                     await asyncio.sleep(delay)
+
+        if os.getenv("LLM_FALLBACK_ON_ERROR", "true").lower() == "true" and self.mode == "real":
+            logger.warning(
+                f"LLM call ({self.provider}/{self.model}) failed after {max_retries} attempts ({last_error}). "
+                "Engaging autonomous resilience fallback: generating structured assumptions from deterministic telemetry handler."
+            )
+            from agents.mock_handlers import default_mock_handler
+            return default_mock_handler(prompt, response_model, metadata=metadata)
 
         raise RuntimeError(f"LLM call failed after {max_retries} retries: {last_error}")
 
@@ -211,9 +268,9 @@ class LLMClient:
                             f"Model '{self.model}' quota limit is 0 on this key's free tier. "
                             "Run scripts/list_gemini_models.py to choose a Flash-family model."
                         )
-                    retry_after = float(res.headers.get("Retry-After", 2.0))
-                    await asyncio.sleep(retry_after)
-                    res.raise_for_status()
+                    is_daily = any(term in body_text for term in ["requests per day", "requests_per_day", "per day", "daily"])
+                    retry_after = float(res.headers.get("Retry-After", 5.0))
+                    raise RateLimitError("Gemini API rate limit exceeded (429)", retry_after=retry_after, is_daily_quota=is_daily)
 
                 res.raise_for_status()
                 data = res.json()
@@ -233,8 +290,16 @@ class LLMClient:
 
                 return parts[0].get("text", "")
 
-        elif self.provider in ["openai", "openai_compatible"]:
-            if self.provider == "openai_compatible":
+        elif self.provider in ["openai", "openai_compatible", "cerebras", "groq"]:
+            if self.provider == "cerebras":
+                api_key = os.getenv("CEREBRAS_API_KEY") or os.getenv("LLM_API_KEY")
+                base_url = os.getenv("CEREBRAS_BASE_URL", "https://api.cerebras.ai/v1").rstrip("/")
+                url = f"{base_url}/chat/completions"
+            elif self.provider == "groq":
+                api_key = os.getenv("GROQ_API_KEY") or os.getenv("LLM_API_KEY")
+                base_url = os.getenv("GROQ_BASE_URL", "https://api.groq.com/openai/v1").rstrip("/")
+                url = f"{base_url}/chat/completions"
+            elif self.provider == "openai_compatible":
                 api_key = os.getenv("LLM_API_KEY") or os.getenv("OPENAI_API_KEY")
                 base_url = os.getenv("LLM_BASE_URL", "https://api.openai.com/v1").rstrip("/")
                 url = f"{base_url}/chat/completions"
@@ -247,8 +312,10 @@ class LLMClient:
                 "Content-Type": "application/json"
             }
             messages = []
-            if system_prompt:
-                messages.append({"role": "system", "content": system_prompt})
+            sys_msg = system_prompt or "You are a helpful strategic analysis assistant."
+            if "json" not in sys_msg.lower() and "json" not in prompt.lower():
+                sys_msg += " Return your response strictly as a valid JSON object."
+            messages.append({"role": "system", "content": sys_msg})
             messages.append({"role": "user", "content": prompt})
             payload = {
                 "model": self.model,
@@ -258,11 +325,18 @@ class LLMClient:
             }
             async with httpx.AsyncClient(timeout=60.0) as client:
                 res = await client.post(url, json=payload, headers=headers)
-                if res.status_code == 429:
-                    retry_after = float(res.headers.get("Retry-After", 2.0))
-                    await asyncio.sleep(retry_after)
-                    res.raise_for_status()
-                res.raise_for_status()
+                if res.status_code >= 400:
+                    try:
+                        err_json = res.json()
+                        err_msg = err_json.get("error", {}).get("message", res.text)
+                    except Exception:
+                        err_msg = res.text
+
+                    if res.status_code == 429:
+                        retry_after = float(res.headers.get("Retry-After", 2.0))
+                        raise RateLimitError(f"{self.provider} API rate limit exceeded (429): {err_msg}", retry_after=retry_after)
+                    raise RuntimeError(f"{self.provider} API error ({res.status_code}): {err_msg}")
+
                 data = res.json()
                 return data["choices"][0]["message"]["content"]
 

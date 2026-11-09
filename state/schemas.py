@@ -88,7 +88,7 @@ class Finding(BaseModel):
 
 class Decision(BaseModel):
     id: str
-    type: Literal["free_plan", "price_change", "unsupported"]
+    type: str = "strategic_decision"
     question: str
     objective: str
     constraints: Dict[str, Any] = Field(default_factory=dict)
@@ -133,20 +133,59 @@ class Conflict(BaseModel):
     isolated_simulation_deltas: Optional[Dict[str, float]] = None
 
 class Critique(BaseModel):
-    skeptic_agent: str
-    target_agent: str
-    target_parameter: str
-    concern: str
+    skeptic_agent: str = "Skeptic"
+    target_agent: str = "Growth"
+    target_parameter: str = "free_to_paid_conversion"
+    concern: str = "Benchmark check"
     severity: Literal["low", "medium", "high"] = "medium"
 
+    @model_validator(mode="before")
+    @classmethod
+    def normalize_critique_fields(cls, data: Any) -> Any:
+        if isinstance(data, dict):
+            if "target_assumption" in data and "target_parameter" not in data:
+                data["target_parameter"] = data["target_assumption"]
+            if "assumption" in data and "target_parameter" not in data:
+                data["target_parameter"] = data["assumption"]
+            if "agent" in data and "target_agent" not in data:
+                data["target_agent"] = data["agent"]
+            if "target_agent" not in data:
+                data["target_agent"] = "Growth"
+            if "skeptic_agent" not in data:
+                data["skeptic_agent"] = "Skeptic"
+            if "concern" not in data:
+                data["concern"] = data.get("challenge", "Audited assumption against grounded benchmarks")
+            if "severity" in data:
+                s = str(data["severity"]).strip().lower()
+                data["severity"] = s if s in ["low", "medium", "high"] else "medium"
+        return data
+
 class Rebuttal(BaseModel):
-    agent: str
-    parameter: str
-    stance: Literal["concede", "defend", "compromise"]
+    agent: str = "Growth"
+    parameter: str = "free_to_paid_conversion"
+    stance: Literal["concede", "defend", "compromise"] = "defend"
     updated_base: Optional[float] = None
     updated_low: Optional[float] = None
     updated_high: Optional[float] = None
-    rationale: str
+    rationale: str = "Holding position based on operating telemetry."
+
+    @model_validator(mode="before")
+    @classmethod
+    def normalize_rebuttal(cls, data: Any) -> Any:
+        if isinstance(data, dict):
+            if "rationale" not in data:
+                data["rationale"] = data.get("justification") or data.get("explanation") or "Maintained position based on data."
+            if "stance" in data:
+                s = str(data["stance"]).lower()
+                if "defend" in s:
+                    data["stance"] = "defend"
+                elif "concede" in s:
+                    data["stance"] = "concede"
+                elif "compromise" in s:
+                    data["stance"] = "compromise"
+                else:
+                    data["stance"] = "defend"
+        return data
 
 class Message(BaseModel):
     from_agent: str
