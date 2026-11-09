@@ -169,7 +169,17 @@ def resolve_conflict_via_simulation(
     # 2. Contradictory recommendations
     elif conflict.type == "contradictory_recommendations":
         conflict.resolution_method = "simulation_isolation"
-        strategies = ["A_limited_features", "B_usage_caps", "C_no_free_plan"]
+        dec_type = getattr(decision, "type", "free_plan") if decision else "free_plan"
+        if dec_type == "price_increase":
+            strategies = ["A_20pct_price_increase", "B_10pct_with_grandfathering", "C_status_quo_pricing"]
+        elif dec_type == "enterprise_tier":
+            strategies = ["A_enterprise_dedicated_sla", "B_self_serve_pro_tier", "C_status_quo"]
+        elif dec_type == "churn_reduction":
+            strategies = ["A_proactive_csm_program", "B_automated_health_scoring", "C_status_quo"]
+        else:
+            strategies = ["A_limited_features", "B_usage_caps", "C_no_free_plan"]
+
+        strat_a, strat_b, strat_c = strategies[0], strategies[1], strategies[2]
         sim_runs = []
         simulation_ids = []
 
@@ -193,20 +203,20 @@ def resolve_conflict_via_simulation(
         ranked = rank_strategies(sim_runs, min_runway_default=min_runway, company_data=data)
 
         res_map = {r.strategy: r.outputs for r in sim_runs}
-        res_a = res_map["A_limited_features"]
-        res_b = res_map["B_usage_caps"]
-        res_c = res_map["C_no_free_plan"]
+        res_a = res_map[strat_a]
+        res_b = res_map[strat_b]
+        res_c = res_map[strat_c]
 
         deltas = {
-            "A_limited_features": round(res_a["net_contribution_12"] - res_c["net_contribution_12"], 2),
-            "B_usage_caps": round(res_b["net_contribution_12"] - res_c["net_contribution_12"], 2),
-            "C_no_free_plan": 0.0
+            strat_a: round(res_a["net_contribution_12"] - res_c["net_contribution_12"], 2),
+            strat_b: round(res_b["net_contribution_12"] - res_c["net_contribution_12"], 2),
+            strat_c: 0.0
         }
         conflict.isolated_simulation_deltas = deltas
 
-        # Check if feasible strategy exists with net contribution > C
+        # Check if feasible strategy exists with net contribution > status quo C
         feasible_outperformers = [
-            (strat, res_map[strat]) for strat in ["A_limited_features", "B_usage_caps"]
+            (strat, res_map[strat]) for strat in [strat_a, strat_b]
             if res_map[strat]["runway_months_12"] >= min_runway and res_map[strat]["net_contribution_12"] > res_c["net_contribution_12"]
         ]
 
@@ -215,18 +225,18 @@ def resolve_conflict_via_simulation(
             margin_over_c = best_res["net_contribution_12"] - res_c["net_contribution_12"]
             conflict.status = "resolved"
             conflict.unresolved = False
-            conflict.verdict = f"Simulation confirms {best_strat} outperforms status quo (C) while maintaining solvent runway."
+            conflict.verdict = f"Simulation confirms {best_strat} outperforms status quo ({strat_c}) while maintaining solvent runway."
             conflict.resolution = (
                 f"Resolved by simulation: Strategy {best_strat} generates ${best_res['net_contribution_12']:,.2f} 12mo net contribution "
-                f"({margin_over_c:+,.0f} vs no-free-plan Strategy C) with {best_res['runway_months_12']:.1f} months runway >= {min_runway:.1f}mo floor. "
+                f"({margin_over_c:+,.0f} vs status quo Strategy {strat_c}) with {best_res['runway_months_12']:.1f} months runway >= {min_runway:.1f}mo floor. "
                 "Reject recommendation is contradicted by empirical runway and contribution margins."
             )
         else:
             conflict.status = "resolved"
             conflict.unresolved = False
-            conflict.verdict = "Simulation confirms status quo (Strategy C) preserves runway; free plan not feasible."
+            conflict.verdict = f"Simulation confirms status quo (Strategy {strat_c}) preserves runway; proposed strategy is not feasible."
             conflict.resolution = (
-                f"Resolved by simulation: Free tier strategies fail to exceed status quo net contribution (${res_c['net_contribution_12']:,.2f}) "
+                f"Resolved by simulation: Evaluated strategies fail to exceed status quo net contribution (${res_c['net_contribution_12']:,.2f}) "
                 f"or breach the {min_runway:.1f} months runway safety floor. Proceed recommendation is contradicted."
             )
         return conflict

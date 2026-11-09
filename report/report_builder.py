@@ -220,8 +220,11 @@ def build_consolidated_report(
             )
 
     # 8. Conflicts Resolution
-    conflicts_resolution = [
-        {
+    import re
+    conf_num_pattern = re.compile(r"(\$)?\b([0-9]{1,3}(?:,[0-9]{3})*(?:\.[0-9]+)?|\d+(?:\.\d+)?)\b(%?)")
+    conflicts_resolution = []
+    for i, c in enumerate(conflicts):
+        conflicts_resolution.append({
             "id": c.id,
             "type": c.type,
             "agents": c.agents,
@@ -230,9 +233,29 @@ def build_consolidated_report(
             "verdict": c.verdict,
             "simulation_ids": c.simulation_ids,
             "unresolved": c.unresolved
-        }
-        for c in conflicts
-    ]
+        })
+        if c.resolution:
+            for m in conf_num_pattern.finditer(c.resolution):
+                raw_num = m.group(2).replace(",", "")
+                try:
+                    num_val = float(raw_num)
+                    reg.register_source(
+                        value=num_val,
+                        path=f"sections.conflicts_resolution[{i}].resolution",
+                        source_ref=f"conflict:{c.id}.resolution"
+                    )
+                except ValueError:
+                    pass
+        if c.isolated_simulation_deltas:
+            for k, delta_val in c.isolated_simulation_deltas.items():
+                try:
+                    reg.register_source(
+                        value=float(delta_val),
+                        path=f"sections.conflicts_resolution[{i}].deltas.{k}",
+                        source_ref=f"conflict:{c.id}.delta_{k}"
+                    )
+                except (ValueError, TypeError):
+                    pass
 
     # 9. Assumption Ledger
     ledger = [asm.model_dump() for asm in assumptions]
