@@ -4,10 +4,16 @@
 > *Built for the SwarmFlow: Multi-Agent Task Coordination Engine Hackathon*
 
 [![CI](https://github.com/omsrajput977/VentureTwin/actions/workflows/ci.yml/badge.svg)](https://github.com/omsrajput977/VentureTwin/actions/workflows/ci.yml)
-[![Tests](https://img.shields.io/badge/pytest-148%20passed%2C%203%20skipped-emerald)](https://github.com/omsrajput977/VentureTwin)
+[![Tests](https://img.shields.io/badge/pytest-151%20passed%2C%203%20skipped-emerald)](https://github.com/omsrajput977/VentureTwin)
 [![UI Verification](https://img.shields.io/badge/UI%20Audit-Zero%20Fake%20Numbers-blue)](ui/scripts/check-no-fake-numbers.mjs)
-[![Architecture](https://img.shields.io/badge/Orchestrator-Custom%20Async%20DAG-purple)](#why-a-custom-executor-instead-of-langgraph)
+[![Architecture Doc](https://img.shields.io/badge/Specification-docs%2FARCHITECTURE.md-blueviolet)](docs/ARCHITECTURE.md)
+[![Orchestrator](https://img.shields.io/badge/Orchestrator-Custom%20Async%20DAG-purple)](#why-a-custom-executor-instead-of-langgraph)
 [![Acceptance Suite](https://img.shields.io/badge/Acceptance%20Criteria-11%2F11%20Verified-blueviolet)](#acceptance-criteria-verification)
+
+---
+
+> 📖 **Comprehensive System Architecture & Engineering Reference:**  
+> For an exhaustive, code-verified deep dive into the multi-agent coordination engine, 11-node task DAG, empirical conflict resolver, 3-tier failure recovery state machine, deterministic SaaS simulation model, 7-check algorithmic verifier, and 40+ technical FAQs, read the complete **[System Architecture Specification (docs/ARCHITECTURE.md)](docs/ARCHITECTURE.md)**.
 
 ---
 
