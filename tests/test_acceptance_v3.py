@@ -48,7 +48,7 @@ def test_criterion_1_agents_are_separate_nodes_with_structured_output():
 @pytest.mark.asyncio
 async def test_criterion_2_deterministic_mock_handlers_use_tool_data():
     cfo = CFOAgent()
-    task = Task(id="t_cfo", owner_agent="CFO", kind="core_analysis")
+    task = Task(id="t_cfo", owner_agent="CFO", kind="agent_analysis")
     finding = await cfo.run(task, context={})
     assert isinstance(finding, Finding)
     assert len(finding.assumptions) >= 1
@@ -86,12 +86,12 @@ def test_criterion_4_genuine_strategy_tradeoff():
 
 # Criterion 5: Real ordinal conflict detection
 def test_criterion_5_ordinal_conflict_detection():
-    f_support = Finding(agent="GROWTH", task_id="t1", claim="c1", recommendation="support")
-    f_strongly_support = Finding(agent="PRODUCT", task_id="t2", claim="c2", recommendation="strongly_support")
-    assert len(detect_contradictory_recommendations([f_support, f_strongly_support])) == 0
+    f_proceed = Finding(agent="GROWTH", task_id="t1", claim="c1", recommendation="proceed")
+    f_limits = Finding(agent="PRODUCT", task_id="t2", claim="c2", recommendation="proceed_with_limits")
+    assert len(detect_contradictory_recommendations([f_proceed, f_limits])) == 0
 
-    f_oppose = Finding(agent="CFO", task_id="t3", claim="c3", recommendation="oppose")
-    conflicts = detect_contradictory_recommendations([f_support, f_oppose])
+    f_reject = Finding(agent="CFO", task_id="t3", claim="c3", recommendation="reject")
+    conflicts = detect_contradictory_recommendations([f_proceed, f_reject])
     assert len(conflicts) == 1
 
 # Criterion 6: Isolated-parameter conflict resolution
@@ -115,12 +115,14 @@ def test_criterion_7_discussion_node_in_dag():
     assert "task_agent_discussion" in dag.tasks
     assert "task_skeptic_audit" in dag.tasks["task_agent_discussion"].depends_on
 
-# Criterion 8: Core task failure stops workflow
+# Criterion 8: Supervisor task failure stops workflow
 @pytest.mark.asyncio
 async def test_criterion_8_core_task_failure_stops_workflow():
     dec = Decision(id="d_fail", question="Should we launch a free plan?", type="free_plan", objective="Evaluate")
     supervisor = Supervisor()
-    supervisor.inject_failure("cfo", "persistent_exception")
+    async def failing_sim(task, state):
+        raise RuntimeError("Cluster failure")
+    supervisor._run_simulation_task = failing_sim
     state = await supervisor.execute_workflow(dec)
     assert state.status == "failed"
     assert state.report is None
@@ -129,7 +131,7 @@ async def test_criterion_8_core_task_failure_stops_workflow():
 @pytest.mark.asyncio
 async def test_criterion_9_instant_timeout_injection():
     agent = CFOAgent()
-    task = Task(id="t_cfo", owner_agent="CFO", kind="core_analysis")
+    task = Task(id="t_cfo", owner_agent="CFO", kind="agent_analysis")
     start = time.time()
     with pytest.raises(asyncio.TimeoutError):
         await agent.run(task, context={}, injected_failure="timeout")
@@ -172,3 +174,4 @@ async def test_criterion_12_human_approval_gate():
     assert state.report is not None
     # Report contains disclaimers that VentureTwin never executes external actions
     assert any("explicit human sign-off" in d for d in state.report.disclaimers)
+

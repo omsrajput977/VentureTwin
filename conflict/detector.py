@@ -1,24 +1,24 @@
-import uuid
+import hashlib
 from typing import List, Dict, Any, Optional
 from state.schemas import Finding, Conflict, Task, Evidence
 
 ORDINAL_MAP: Dict[str, int] = {
-    "strongly_oppose": -2,
-    "reject": -2,
-    "oppose": -1,
-    "proceed_with_limits": -1,
-    "neutral": 0,
-    "needs_more_info": 0,
-    "support": 1,
-    "proceed": 1,
-    "strongly_support": 2
+    "reject": 0,
+    "needs_more_info": 1,
+    "proceed_with_limits": 2,
+    "proceed": 3
 }
+
+def generate_deterministic_conflict_id(conflict_type: str, disputed_item: str, agents: List[str]) -> str:
+    sorted_agents = sorted(a.upper() for a in agents)
+    key_str = f"{conflict_type}||{disputed_item}||{sorted_agents}"
+    return f"conf_{hashlib.sha256(key_str.encode('utf-8')).hexdigest()[:8]}"
 
 def detect_contradictory_recommendations(findings: List[Finding]) -> List[Conflict]:
     """
     Flags conflicts only when ordinal distance between recommendations is >= 2.
-    For example: oppose (-1) vs support (+1) = 2 (conflict).
-    support (+1) vs strongly_support (+2) = 1 (NOT a conflict).
+    For example: reject (0) vs proceed_with_limits (2) = 2 (conflict).
+    proceed_with_limits (2) vs proceed (3) = 1 (NOT a conflict).
     Degraded agent findings are excluded.
     """
     conflicts: List[Conflict] = []
@@ -38,8 +38,9 @@ def detect_contradictory_recommendations(findings: List[Finding]) -> List[Confli
                     continue
                 seen_pairs.add(pair_key)
 
+                cid = generate_deterministic_conflict_id("contradictory_recommendations", "decision_recommendation", [f1.agent, f2.agent])
                 conflicts.append(Conflict(
-                    id=f"conf_rec_{uuid.uuid4().hex[:6]}",
+                    id=cid,
                     type="contradictory_recommendations",
                     agents=[f1.agent, f2.agent],
                     disputed_item="decision_recommendation",
@@ -101,10 +102,12 @@ def detect_non_overlapping_ranges(findings: List[Finding]) -> List[Conflict]:
                     snippet=f"{agent} proposed range [{asm.low}, {asm.high}] with base {asm.base}"
                 ))
 
+            agent_list = sorted(list(set(agents)))
+            cid = generate_deterministic_conflict_id("non_overlapping_ranges", name, agent_list)
             conflicts.append(Conflict(
-                id=f"conf_range_{uuid.uuid4().hex[:6]}",
+                id=cid,
                 type="non_overlapping_ranges",
-                agents=sorted(list(set(agents))),
+                agents=agent_list,
                 disputed_item=name,
                 evidence=evidence_list,
                 resolution=None,
@@ -127,8 +130,9 @@ def detect_missing_evidence(findings: List[Finding]) -> List[Conflict]:
     for f in valid_findings:
         for asm in f.assumptions:
             if asm.provenance in ["verified_data", "external_research"] and not asm.source_ref:
+                cid = generate_deterministic_conflict_id("missing_evidence", asm.name, [f.agent])
                 conflicts.append(Conflict(
-                    id=f"conf_evi_{uuid.uuid4().hex[:6]}",
+                    id=cid,
                     type="missing_evidence",
                     agents=[f.agent],
                     disputed_item=asm.name,

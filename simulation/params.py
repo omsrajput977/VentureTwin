@@ -102,3 +102,4 @@ SIM_PARAMS: Dict[str, SimParamSpec] = {
         description="Increase in free-to-paid conversion urgency when users hit usage ceilings."
     )
 }
+

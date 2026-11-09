@@ -1,53 +1,53 @@
 """
 Deterministic mock handlers for unit testing and offline demo fallback.
-Computes responses dynamically from company tool data with zero static string literals.
+Provides structured responses for specialist agents and rebuttals using explicit agent_key routing.
+Note: Mock mode contains illustrative hardcoded ranges for parameters not directly present in company telemetry.
 """
-from typing import Type, TypeVar, Any, Dict
+from typing import Type, TypeVar, Any, Dict, Optional
 from pydantic import BaseModel
 from state.schemas import AgentFindingDraft, DraftAssumption, Evidence, Rebuttal
 from data.loader import load_company_data
 
 T = TypeVar("T", bound=BaseModel)
 
-def default_mock_handler(prompt: str, response_model: Type[T]) -> T:
+def default_mock_handler(
+    prompt: str,
+    response_model: Type[T],
+    metadata: Optional[Dict[str, Any]] = None
+) -> T:
+    if metadata is None or "agent_key" not in metadata:
+        raise KeyError(f"Mock mode requires 'agent_key' in metadata, received: {metadata}")
+
+    agent_key = str(metadata["agent_key"]).lower()
+
     if response_model is AgentFindingDraft:
-        return _generate_finding_draft(prompt)  # type: ignore
+        return _generate_finding_draft(agent_key)  # type: ignore
     if response_model is Rebuttal:
-        return _generate_rebuttal(prompt)  # type: ignore
+        return _generate_rebuttal(agent_key, metadata)  # type: ignore
+
     # Fallback to model instantiation
     return response_model.model_validate({})
 
-def _generate_rebuttal(prompt: str) -> Rebuttal:
-    p_lower = prompt.lower()
-    if "growth" in p_lower or "conversion" in p_lower:
-        return Rebuttal(
-            agent="GROWTH",
-            parameter="free_to_paid_conversion",
-            stance="compromise",
-            updated_base=0.028,
-            updated_low=0.020,
-            updated_high=0.040,
-            rationale="Conceding part of initial optimism: narrowing base from 0.035 to 0.028 pending early cohort telemetry."
-        )
+def _generate_rebuttal(agent_key: str, metadata: Dict[str, Any]) -> Rebuttal:
+    param = metadata.get("parameter", "parameter")
     return Rebuttal(
-        agent="AGENT",
-        parameter="general",
+        agent=agent_key.upper(),
+        parameter=param,
         stance="defend",
         updated_base=None,
         updated_low=None,
         updated_high=None,
-        rationale="Defending original assumption bounds based on empirical benchmarks."
+        rationale=f"{agent_key.upper()} defends its baseline assumption for {param} based on operating constraints."
     )
 
-def _generate_finding_draft(prompt: str) -> AgentFindingDraft:
-    p_lower = prompt.lower()
+def _generate_finding_draft(agent_key: str) -> AgentFindingDraft:
     data = load_company_data()
     fin = data["financials"]
     funnel = data["funnel"]
     infra = data["infrastructure"]
     cust = data["customers"]
 
-    if "cfo" in p_lower or "chief financial officer" in p_lower or "company financials" in p_lower:
+    if agent_key == "cfo":
         runway = fin["runway_months"]
         cash = fin["cash_balance"]
         min_runway = fin.get("target_min_runway_months", 10.0)
@@ -68,17 +68,8 @@ def _generate_finding_draft(prompt: str) -> AgentFindingDraft:
                     base=0.015,
                     high=0.022,
                     unit="rate",
-                    basis="financials.target_min_runway_months",
-                    rationale="Conservative cohort conversion to safeguard gross margins"
-                ),
-                DraftAssumption(
-                    name="min_acceptable_runway_months",
-                    low=8.0,
-                    base=min_runway,
-                    high=12.0,
-                    unit="months",
-                    basis="financials.target_min_runway_months",
-                    rationale="Minimum required board-mandated operating cash cushion"
+                    basis="",
+                    rationale="Conservative freemium cohort conversion rate to safeguard runway"
                 )
             ],
             evidence=[
@@ -92,7 +83,7 @@ def _generate_finding_draft(prompt: str) -> AgentFindingDraft:
             confidence=0.82
         )
 
-    elif "growth" in p_lower or "cmo" in p_lower or "chief marketing officer" in p_lower or "funnel" in p_lower:
+    elif agent_key == "growth":
         visitors = funnel["monthly_visitors"]
         trials = funnel["trial_signups"]
         return AgentFindingDraft(
@@ -114,7 +105,7 @@ def _generate_finding_draft(prompt: str) -> AgentFindingDraft:
                     base=3800.0,
                     high=5200.0,
                     unit="users/month",
-                    basis="funnel.monthly_visitors",
+                    basis="",
                     rationale="Projected signup volume from existing organic site traffic"
                 )
             ],
@@ -129,7 +120,7 @@ def _generate_finding_draft(prompt: str) -> AgentFindingDraft:
             confidence=0.78
         )
 
-    elif "cto" in p_lower or "chief technology officer" in p_lower or "infrastructure" in p_lower:
+    elif agent_key == "cto":
         cloud_cost = infra["monthly_cloud_cost"]
         per_free = infra.get("infra_cost_per_free_user_estimate", 1.15)
         return AgentFindingDraft(
@@ -151,8 +142,8 @@ def _generate_finding_draft(prompt: str) -> AgentFindingDraft:
                     base=0.35,
                     high=0.50,
                     unit="rate",
-                    basis="saas_infra_per_free_user",
-                    rationale="Infrastructure savings enabled by rate-limiting free tier"
+                    basis="",
+                    rationale="Infrastructure savings enabled by rate-limiting free tier compute"
                 )
             ],
             evidence=[
@@ -166,11 +157,16 @@ def _generate_finding_draft(prompt: str) -> AgentFindingDraft:
             confidence=0.85
         )
 
-    elif "customer" in p_lower or "retention" in p_lower or "churn" in p_lower:
+    elif agent_key == "customer":
         paying = cust["total_paying"]
-        starter_count = next((p["count"] for p in cust.get("plans", []) if p["name"] == "Starter"), 450)
+        starter_count = next((p["count"] for p in cust.get("plans", []) if p["name"] == "Starter"), None)
+        claim_text = (
+            f"The Starter tier with {starter_count} accounts requires strict feature boundaries to avoid cannibalization."
+            if starter_count is not None else
+            f"Total paying customer base of {paying} requires strict feature boundaries to avoid cannibalization."
+        )
         return AgentFindingDraft(
-            claim=f"The Starter tier with {starter_count} accounts requires strict feature boundaries to avoid cannibalization.",
+            claim=claim_text,
             recommendation="proceed_with_limits",
             assumptions=[
                 DraftAssumption(
@@ -179,7 +175,7 @@ def _generate_finding_draft(prompt: str) -> AgentFindingDraft:
                     base=0.08,
                     high=0.15,
                     unit="rate",
-                    basis="saas_freemium_cannibalization",
+                    basis="",
                     rationale="Estimated fraction of potential Starter prospects settling for free"
                 ),
                 DraftAssumption(
@@ -188,7 +184,7 @@ def _generate_finding_draft(prompt: str) -> AgentFindingDraft:
                     base=0.50,
                     high=0.70,
                     unit="rate",
-                    basis="saas_freemium_cannibalization",
+                    basis="",
                     rationale="Cannibalization reduction by withholding team seats from free tier"
                 )
             ],
@@ -203,7 +199,9 @@ def _generate_finding_draft(prompt: str) -> AgentFindingDraft:
             confidence=0.72
         )
 
-    elif "product" in p_lower:
+    elif agent_key == "product":
+        plans = cust.get("plans", [])
+        plan_names = ", ".join(p["name"] for p in plans) if plans else "existing tiers"
         return AgentFindingDraft(
             claim="Usage ceilings create a natural upgrade catalyst when users reach productivity scale.",
             recommendation="proceed_with_limits",
@@ -214,7 +212,7 @@ def _generate_finding_draft(prompt: str) -> AgentFindingDraft:
                     base=0.10,
                     high=0.20,
                     unit="rate",
-                    basis="b2b_saas_freemium_conversion",
+                    basis="",
                     rationale="Friction caused by usage limits on free tier"
                 ),
                 DraftAssumption(
@@ -223,7 +221,7 @@ def _generate_finding_draft(prompt: str) -> AgentFindingDraft:
                     base=0.15,
                     high=0.25,
                     unit="rate",
-                    basis="b2b_saas_freemium_conversion",
+                    basis="",
                     rationale="Conversion velocity increase upon reaching usage caps"
                 )
             ],
@@ -231,19 +229,11 @@ def _generate_finding_draft(prompt: str) -> AgentFindingDraft:
                 Evidence(
                     source_type="company_data",
                     source_ref="customers.plans",
-                    snippet="Feature boundaries protect 90%+ of Starter plan value proposition."
+                    snippet=f"Monitored feature plans: {plan_names}."
                 )
             ],
             limitations=["Requires clean in-app upgrade triggers."],
             confidence=0.80
         )
 
-    # Generic fallback
-    return AgentFindingDraft(
-        claim="Evaluated operational parameters against company baseline.",
-        recommendation="proceed_with_limits",
-        assumptions=[],
-        evidence=[],
-        limitations=[],
-        confidence=0.70
-    )
+    raise KeyError(f"Unknown agent_key for mock draft: {agent_key}")

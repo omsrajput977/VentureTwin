@@ -23,12 +23,13 @@ app = FastAPI(
     version="0.1.0"
 )
 
-cors_origins_env = os.getenv("CORS_ORIGINS", "*")
+DEFAULT_CORS_ORIGINS = "http://localhost:5173,http://localhost:8000,http://127.0.0.1:5173,http://localhost:3000"
+cors_origins_env = os.getenv("CORS_ORIGINS", DEFAULT_CORS_ORIGINS)
 allowed_origins = [o.strip() for o in cors_origins_env.split(",") if o.strip()]
 
 app.add_middleware(
     CORSMiddleware,
-    allow_origins=allowed_origins if allowed_origins else ["*"],
+    allow_origins=allowed_origins if allowed_origins else ["http://localhost:5173"],
     allow_credentials=True,
     allow_methods=["*"],
     allow_headers=["*"],
@@ -45,6 +46,7 @@ class HealthStatus(BaseModel):
     llm_mode: str
     provider: str
     model: str
+    probe_latency_ms: Optional[float] = None
 
 class DecisionRequest(BaseModel):
     query: str
@@ -77,29 +79,55 @@ if os.path.exists(dist_assets):
     app.mount("/assets", StaticFiles(directory=dist_assets), name="assets")
 
 @app.get("/api/health", response_model=HealthStatus)
-async def health():
+async def health(probe: bool = False):
+    import time
     llm_mode = os.getenv("LLM_MODE", "mock").lower()
     provider = os.getenv("LLM_PROVIDER", "mock")
     model = os.getenv("LLM_MODEL", "mock-agent-v1")
+    probe_latency: Optional[float] = None
     
-    if llm_mode == "real":
+    if llm_mode in ["real", "record"]:
         if provider == "gemini" and not os.getenv("GEMINI_API_KEY"):
             raise HTTPException(
                 status_code=500,
-                detail="ConfigurationError: LLM_MODE is real and provider is gemini but GEMINI_API_KEY is not set."
+                detail="ConfigurationError: LLM_MODE is real/record and provider is gemini but GEMINI_API_KEY is not set."
             )
         elif provider == "openai" and not os.getenv("OPENAI_API_KEY"):
             raise HTTPException(
                 status_code=500,
-                detail="ConfigurationError: LLM_MODE is real and provider is openai but OPENAI_API_KEY is not set."
+                detail="ConfigurationError: LLM_MODE is real/record and provider is openai but OPENAI_API_KEY is not set."
             )
+        elif provider == "anthropic" and not os.getenv("ANTHROPIC_API_KEY"):
+            raise HTTPException(
+                status_code=500,
+                detail="ConfigurationError: LLM_MODE is real/record and provider is anthropic but ANTHROPIC_API_KEY is not set."
+            )
+        elif provider == "openai_compatible" and not (os.getenv("LLM_API_KEY") or os.getenv("OPENAI_API_KEY")):
+            raise HTTPException(
+                status_code=500,
+                detail="ConfigurationError: LLM_MODE is real/record and provider is openai_compatible but LLM_API_KEY is not set."
+            )
+
+        if probe:
+            try:
+                from agents.llm_client import LLMClient
+                from pydantic import BaseModel
+                class _ProbeSchema(BaseModel):
+                    status: str
+                probe_client = LLMClient(mode=llm_mode, provider=provider, model=model)
+                t0 = time.time()
+                await probe_client.call('Return JSON: {"status": "ok"}', _ProbeSchema)
+                probe_latency = round((time.time() - t0) * 1000, 2)
+            except Exception as probe_err:
+                raise HTTPException(status_code=500, detail=f"LLM probe failed: {probe_err}")
             
     return HealthStatus(
         status="ok",
         version="0.1.0",
         llm_mode=llm_mode,
         provider=provider,
-        model=model
+        model=model,
+        probe_latency_ms=probe_latency
     )
 
 @app.get("/api/company")

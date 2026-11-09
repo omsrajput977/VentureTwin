@@ -23,7 +23,9 @@ class WorkflowState(BaseModel):
     conflicts: List[Conflict] = Field(default_factory=list)
     simulation_runs: List[SimulationRun] = Field(default_factory=list)
     verification_results: List[VerificationResult] = Field(default_factory=list)
+    draft_report: Optional[Report] = None
     report: Optional[Report] = None
+    verification_attempts: int = 0
     events: List[Event] = Field(default_factory=list)
     ignored_assumptions: List[str] = Field(default_factory=list)
     skeptic_challenges: List[Dict[str, Any]] = Field(default_factory=list)
@@ -31,6 +33,8 @@ class WorkflowState(BaseModel):
     discussion_messages: List[Message] = Field(default_factory=list)
     status: Literal["pending", "running", "completed", "failed", "degraded"] = "pending"
     degraded_agents: List[str] = Field(default_factory=list)
+    recovered_agents: List[str] = Field(default_factory=list)
+    failed_ids: List[str] = Field(default_factory=list)
     round: int = 1
     max_rounds: int = 3
 
@@ -48,6 +52,8 @@ class WorkflowState(BaseModel):
             self.tasks[task_id].output_ref = output_ref
 
     def mark_task_failed(self, task_id: str, error: str) -> None:
+        if task_id not in self.failed_ids:
+            self.failed_ids.append(task_id)
         if task_id in self.tasks:
             self.tasks[task_id].status = "failed"
             self.tasks[task_id].error = error

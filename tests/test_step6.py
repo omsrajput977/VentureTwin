@@ -109,5 +109,5 @@ def test_flip_point_search(sample_assumptions):
     )
     assert res["has_flip_point"] is True
     assert 0.001 < res["threshold"] < 0.05
-    assert "outperforms" in res["statement"]
+    assert "outperforms" in res["statement"] or "overtaken by" in res["statement"]
 

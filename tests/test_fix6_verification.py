@@ -79,3 +79,4 @@ def test_prose_number_audit_catches_untraced_number():
     res_rogue = verify_prose_numbers(rogue_report)
     assert res_rogue.status == "failed"
     assert "4,500,000" in res_rogue.detail or "4500000" in res_rogue.detail
+

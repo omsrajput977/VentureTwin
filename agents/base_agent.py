@@ -46,7 +46,7 @@ class BaseAgent:
         task: Task,
         context: Dict[str, Any],
         llm_client: Optional[LLMClient] = None,
-        injected_failure: Optional[str] = None
+        injected_failure: Optional[Any] = None
     ) -> Finding:
         """
         Executes the agent's task within timeout and validates the structured Finding output.
@@ -54,13 +54,27 @@ class BaseAgent:
         self.heartbeat()
 
         # Handle failure injection for resilience testing
-        if injected_failure == "timeout":
-            raise asyncio.TimeoutError(f"Agent {self.name} timed out due to injected failure")
-        elif injected_failure == "exception":
-            raise AgentExecutionError(f"Agent {self.name} crashed with injected exception")
-        elif injected_failure == "bad_output":
-            # Returns an invalid dictionary or raises validation error
-            raise ValueError(f"Injected bad output schema for {self.name}")
+        should_fail = False
+        fail_mode = None
+        if isinstance(injected_failure, dict):
+            fail_mode = injected_failure.get("mode")
+            persist = injected_failure.get("persist", False)
+            fail_attempts = injected_failure.get("fail_attempts", 1)
+            attempts_done = injected_failure.get("attempts_done", 0)
+            if persist or attempts_done < fail_attempts:
+                should_fail = True
+                injected_failure["attempts_done"] = attempts_done + 1
+        elif isinstance(injected_failure, str):
+            fail_mode = injected_failure.replace("persistent_", "")
+            should_fail = True
+
+        if should_fail and fail_mode:
+            if fail_mode == "timeout":
+                raise asyncio.TimeoutError(f"Agent {self.name} timed out due to injected failure")
+            elif fail_mode == "exception":
+                raise AgentExecutionError(f"Agent {self.name} crashed with injected exception")
+            elif fail_mode == "bad_output":
+                raise ValueError(f"Injected bad output schema for {self.name}")
 
         try:
             finding = await asyncio.wait_for(

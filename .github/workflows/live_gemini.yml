@@ -1,0 +1,41 @@
+name: Live Gemini Check (Manual)
+
+on:
+  workflow_dispatch:
+    inputs:
+      model:
+        description: "Gemini Model ID"
+        required: false
+        default: "gemini-2.5-flash"
+
+jobs:
+  live-check:
+    name: Live Gemini Probe & Workflow Verification
+    runs-on: ubuntu-latest
+    env:
+      LLM_MODE: real
+      LLM_PROVIDER: gemini
+      LLM_MODEL: ${{ github.event.inputs.model || 'gemini-2.5-flash' }}
+      GEMINI_API_KEY: ${{ secrets.GEMINI_API_KEY }}
+      RUN_LIVE_LLM: "1"
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Set up Python 3.13
+        uses: actions/setup-python@v5
+        with:
+          python-version: "3.13"
+          cache: "pip"
+
+      - name: Install dependencies
+        run: |
+          python -m pip install --upgrade pip
+          pip install -e ".[dev]" || pip install pytest pytest-asyncio pydantic fastapi httpx uvicorn numpy scipy
+
+      - name: Run Gemini Health Check
+        run: |
+          python scripts/check_gemini.py
+
+      - name: Run Live LLM Verification Tests
+        run: |
+          pytest tests/test_live_gemini.py tests/test_acceptance_v4.py -k test_criterion_11 -v

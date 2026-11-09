@@ -83,11 +83,17 @@ export async function fetchDecisionReport(decisionId: string) {
   return res.json();
 }
 
-export async function injectFailure(decisionId: string, agent: string, mode: string) {
+export async function injectFailure(
+  decisionId: string,
+  agent: string,
+  mode: string,
+  persist: boolean = false,
+  failAttempts: number = 1
+) {
   const res = await fetch(`${API_BASE}/decisions/${decisionId}/inject-failure`, {
     method: 'POST',
     headers: { 'Content-Type': 'application/json' },
-    body: JSON.stringify({ agent, mode })
+    body: JSON.stringify({ agent, mode, persist, fail_attempts: failAttempts })
   });
   if (!res.ok) throw new Error('Failed to inject failure');
   return res.json();

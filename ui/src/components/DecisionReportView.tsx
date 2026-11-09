@@ -39,7 +39,7 @@ export const DecisionReportView: React.FC<Props> = ({ report, decisionId, onAppr
   const ledger = sec.assumption_ledger || [];
   const verifs = sec.verification_summary || [];
   const risks = sec.risks_and_triggers || [];
-  const conf = sec.confidence_assessment || { level: report.confidence, score: 0.8, reasons: [] };
+  const conf = sec.confidence_assessment || { level: report.confidence, score: undefined, reasons: [] };
 
   return (
     <div className="space-y-6">
@@ -58,7 +58,7 @@ export const DecisionReportView: React.FC<Props> = ({ report, decisionId, onAppr
           <div className="text-right">
             <div className="text-xs text-slate-400 font-medium">Confidence Rating</div>
             <div className={`text-xl font-bold ${conf.level === 'High' ? 'text-emerald-400' : conf.level === 'Medium' ? 'text-amber-400' : 'text-rose-400'}`}>
-              {conf.level} ({((conf.score || 0.75) * 100).toFixed(0)}%)
+              {conf.level} {typeof conf.score === 'number' ? `(${((conf.score) * 100).toFixed(0)}%)` : ''}
             </div>
           </div>
         </div>
@@ -323,7 +323,7 @@ export const DecisionReportView: React.FC<Props> = ({ report, decisionId, onAppr
               type="text"
               value={approvalNotes}
               onChange={(e) => setApprovalNotes(e.target.value)}
-              placeholder="e.g. Approved for pilot rollout in Q1 with $79 Starter guardrails..."
+              placeholder="e.g. Approved for pilot rollout in Q1 with Starter guardrails..."
               className="w-full bg-slate-950 border border-slate-800 rounded-xl px-4 py-2.5 text-xs text-slate-200 focus:outline-none focus:border-brand-500"
             />
           </div>

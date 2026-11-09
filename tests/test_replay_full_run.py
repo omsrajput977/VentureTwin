@@ -15,3 +15,4 @@ async def test_replay_full_run():
     state = await supervisor.execute_workflow(decision)
     assert state.status in ["completed", "degraded"]
     assert state.report is not None
+

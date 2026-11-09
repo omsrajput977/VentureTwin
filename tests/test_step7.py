@@ -19,11 +19,16 @@ async def test_conflict_detection_on_cfo_and_growth():
 
     findings = [cfo_f, growth_f]
 
-    # 1. Contradictory recommendations
+    # 1. Contradictory recommendations: proceed vs proceed_with_limits is distance 1 (informational, not conflict)
     conf_recs = detect_contradictory_recommendations(findings)
-    assert len(conf_recs) >= 1
-    assert "CFO" in conf_recs[0].agents
-    assert "Growth" in conf_recs[0].agents
+    assert len(conf_recs) == 0
+
+    # If CFO rejects, distance is >= 2 (conflict)
+    cfo_reject = cfo_f.model_copy(update={"recommendation": "reject"})
+    conf_recs_opposed = detect_contradictory_recommendations([cfo_reject, growth_f])
+    assert len(conf_recs_opposed) == 1
+    assert "CFO" in conf_recs_opposed[0].agents
+    assert "Growth" in conf_recs_opposed[0].agents
 
     # 2. Non-overlapping ranges
     conf_ranges = detect_non_overlapping_ranges(findings)
@@ -64,7 +69,7 @@ async def test_conflict_resolution_via_simulation():
 
     resolved = resolve_conflict_via_simulation(target_conf, [cfo_f, growth_f])
 
-    assert len(resolved.simulation_ids) == 2
+    assert len(resolved.simulation_ids) >= 2
     assert resolved.resolution is not None
     # Resolution contains real numbers, not placeholder text
     assert "$" in resolved.resolution

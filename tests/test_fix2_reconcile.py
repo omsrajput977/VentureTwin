@@ -61,3 +61,4 @@ def test_get_min_runway_precedence():
 
     # Falls back to 10.0 default
     assert get_min_runway(dec_no_constraint, {}) == 10.0
+

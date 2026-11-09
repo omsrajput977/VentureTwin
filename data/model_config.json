@@ -4,6 +4,14 @@
   "monthly_support_cost_per_fte": 7000.0,
   "tickets_per_fte_monthly": 300,
   "paid_tickets_per_customer_monthly": 1.83,
+  "support_ticket_reduction_factor": 0.40,
+  "support_ticket_reduction_floor": 0.002,
+  "min_paying_customer_floor": 10,
+  "min_infra_cost_floor": 0.10,
+  "min_cannibalization_floor": 0.005,
+  "min_activation_retention_floor": 0.05,
+  "target_gross_margin": 70.0,
   "illustrative": true,
   "description": "Baseline operational dynamics constants for NimbusDesk simulation model"
 }
+

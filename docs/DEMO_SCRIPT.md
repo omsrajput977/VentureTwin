@@ -31,17 +31,21 @@
   - Notice the emergent disagreement: Growth recommends `proceed` with 3.5% conversion; CFO recommends `proceed_with_limits` with 1.5% conversion.
 
 ### 3. Live Failure Injection & Autonomous Recovery (1:15 - 1:45)
-- **Action:** Under **Live Fault Injection**, select target `CTO` and mode `Process Exception (Crash)`, then click **"Inject Failure"**.
+- **Action:** Under **Live Fault Injection**, select target `CFO` (or `CTO`), mode `Process Exception (Crash)`, toggle the **"Persistent Failure across all retries"** switch, and click **"Inject Failure"**.
 - **Show:**
-  - The Event Feed displays `agent_failed` for CTO.
-  - The Supervisor's fault-tolerant engine detects the crash, initiates backoff retry (`recovery_started`), and safely completes or transitions to degraded mode (`recovery_done`).
-  - Checkpoint persistence in SQLite ensures no completed tasks need re-execution.
+  - The Event Feed displays `agent_failed` for the targeted agent across attempts.
+  - The Supervisor's fault-tolerant engine detects persistent failure and invokes the autonomous **Backup Analyst**.
+  - If the backup succeeds, the finding is marked `recovered_via_backup=True`, confidence is capped at Medium, and the agent is tracked in `recovered_agents`.
+  - If backup also fails, the engine safely applies a graceful degraded fallback (`fallback_degraded` provenance, confidence <= 0.3), surfaces an honest **Degraded Mode Banner** in the UI, and completes the workflow without crashing.
+  - Show contrast: if a central supervisor task (e.g., simulation engine) fails terminally, the system safely halts with `status="failed"`, emits `workflow_failed`, and preserves a resumable SQLite checkpoint.
 
 ### 4. Skeptic Audit & Simulation-Backed Conflict Resolution (1:45 - 2:15)
 - **Show:**
-  - **Skeptic Agent:** Audits Growth's optimistic assumption (3.5% conversion) for lack of self-serve telemetry and downgrades confidence.
+  - **Skeptic Agent:** Audits Growth's optimistic assumption (3.5% conversion) for lack of self-serve telemetry, audits CFO's conservative range, and checks industry benchmarks.
+  - **Bounded Peer Discussion:** 1-round structured rebuttal where agents hold ground (`stance="defend"`) or concede with rationale.
   - **Empirical Conflict Resolution:** Point to the conflict panel. Disagreements between CFO and Growth are **not settled by an LLM picking a winner or voting**.
-  - The engine ran the deterministic NumPy simulator for both sides. It proved that Strategy B (Usage Caps) preserves the minimum 10-month runway constraint even under the CFO's conservative assumptions, mathematically settling the impasse.
+  - **Simulation Decided:** The engine isolates the disputed parameter (`free_to_paid_conversion`), simulates outcomes under both agent proposals, calculates exact net contribution and runway deltas, and resolves by quantitative evidence.
+  - **Transparent Unresolved/Material Conflicts:** If an impasse cannot be settled or falls within tolerance, it is tagged `resolved_immaterial` or `unresolved_material` and reported honestly in the final output rather than hidden.
 
 ### 5. Consolidated Report, Sensitivity Tornado & Flip Point (2:15 - 2:45)
 - **Action:** Click the **"Decision Report"** tab.

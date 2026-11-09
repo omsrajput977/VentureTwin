@@ -55,6 +55,12 @@ def run_saas_dynamics(
     support_cost_per_fte = float(model_config.get("monthly_support_cost_per_fte", 7000.0))
     tickets_per_fte = float(model_config.get("tickets_per_fte_monthly", 300.0))
     paid_tickets_per_cust = float(model_config.get("paid_tickets_per_customer_monthly", 1.83))
+    supp_reduction_factor = float(model_config.get("support_ticket_reduction_factor", 0.40))
+    supp_reduction_floor = float(model_config.get("support_ticket_reduction_floor", 0.002))
+    min_paying_floor = int(model_config.get("min_paying_customer_floor", 10))
+    min_infra_floor = float(model_config.get("min_infra_cost_floor", 0.10))
+    min_cann_floor = float(model_config.get("min_cannibalization_floor", 0.005))
+    min_act_floor = float(model_config.get("min_activation_retention_floor", 0.05))
 
     # Strategy levers from calibrated parameters
     free_signups_mo = params.get("monthly_free_signups", 3800.0)
@@ -84,12 +90,12 @@ def run_saas_dynamics(
         cap_conv_uplift = params.get("cap_conversion_uplift", 0.15)
         act_drop = params.get("activation_drop_from_gating", 0.10)
 
-        cost_per_free = max(0.10, cost_per_free * (1.0 - usage_cap_infra_red))
-        cannibalization_rate = max(0.005, cannibalization_rate * (1.0 - usage_cap_cann_red))
-        free_ticket_rate = max(0.002, free_ticket_rate * 0.50)
+        cost_per_free = max(min_infra_floor, cost_per_free * (1.0 - usage_cap_infra_red))
+        cannibalization_rate = max(min_cann_floor, cannibalization_rate * (1.0 - usage_cap_cann_red))
+        free_ticket_rate = max(supp_reduction_floor, free_ticket_rate * supp_reduction_factor)
         conversion_rate = conversion_rate * (1.0 + cap_conv_uplift)
-        effective_signups = free_signups_mo * max(0.05, 1.0 - act_drop)
-        activation_rate = baseline_activation_rate * max(0.05, 1.0 - act_drop)
+        effective_signups = free_signups_mo * max(min_act_floor, 1.0 - act_drop)
+        activation_rate = baseline_activation_rate * max(min_act_floor, 1.0 - act_drop)
         paid_acquisition_lift = 1.0
     else:  # Strategy A: Limited features
         paid_acquisition_lift = 1.0
@@ -130,7 +136,7 @@ def run_saas_dynamics(
         # Paying churn
         churned_paying = paying * churn_rate
         new_paid = effective_baseline_paid + converted_paid - cannibalized
-        paying = max(10, int(paying - churned_paying + new_paid))
+        paying = max(min_paying_floor, int(paying - churned_paying + new_paid))
 
         # 2. Financial dynamics
         mrr = paying * arpu

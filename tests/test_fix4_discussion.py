@@ -21,31 +21,31 @@ from orchestrator.supervisor import Supervisor
 from data.loader import load_company_data
 
 def test_ordinal_recommendation_conflict_detection():
-    # Stances with distance < 2 should NOT produce a conflict
+    # Stances with distance < 2 should NOT produce a conflict (proceed=3 vs proceed_with_limits=2 -> diff 1)
     f1 = Finding(
         agent="GROWTH",
         task_id="t1",
         claim="Growth supports free plan",
-        recommendation="support",
+        recommendation="proceed",
         assumptions=[],
         evidence=[]
     )
     f2 = Finding(
         agent="PRODUCT",
         task_id="t2",
-        claim="Product strongly supports free plan",
-        recommendation="strongly_support",
+        claim="Product recommends limits",
+        recommendation="proceed_with_limits",
         assumptions=[],
         evidence=[]
     )
     assert len(detect_contradictory_recommendations([f1, f2])) == 0
 
-    # Stances with distance >= 2 (oppose vs support = 2) MUST produce a conflict
+    # Stances with distance >= 2 (reject=0 vs proceed=3 -> diff 3) MUST produce a conflict
     f3 = Finding(
         agent="CFO",
         task_id="t3",
-        claim="CFO opposes unconstrained free tier",
-        recommendation="oppose",
+        claim="CFO rejects free tier",
+        recommendation="reject",
         assumptions=[],
         evidence=[]
     )
@@ -59,7 +59,7 @@ def test_parameter_conflicts_grouped_per_param_and_degraded_ignored():
         agent="CFO",
         task_id="t1",
         claim="CFO low conversion",
-        recommendation="oppose",
+        recommendation="reject",
         assumptions=[
             Assumption(name="free_to_paid_conversion", low=0.01, base=0.015, high=0.018, unit="rate", provenance="verified_data", proposed_by="CFO")
         ],
@@ -69,7 +69,7 @@ def test_parameter_conflicts_grouped_per_param_and_degraded_ignored():
         agent="GROWTH",
         task_id="t2",
         claim="Growth high conversion",
-        recommendation="support",
+        recommendation="proceed",
         assumptions=[
             Assumption(name="free_to_paid_conversion", low=0.035, base=0.04, high=0.05, unit="rate", provenance="external_research", proposed_by="GROWTH")
         ],
@@ -79,7 +79,7 @@ def test_parameter_conflicts_grouped_per_param_and_degraded_ignored():
         agent="PRODUCT",
         task_id="t3",
         claim="Product very high conversion",
-        recommendation="strongly_support",
+        recommendation="proceed_with_limits",
         assumptions=[
             Assumption(name="free_to_paid_conversion", low=0.06, base=0.07, high=0.08, unit="rate", provenance="simulated_estimate", proposed_by="PRODUCT")
         ],
@@ -96,7 +96,7 @@ def test_parameter_conflicts_grouped_per_param_and_degraded_ignored():
         agent="CFO",
         task_id="t1",
         claim="Degraded fallback",
-        recommendation="oppose",
+        recommendation="reject",
         assumptions=[
             Assumption(name="free_to_paid_conversion", low=0.01, base=0.015, high=0.018, unit="rate", provenance="fallback_degraded", proposed_by="CFO")
         ],
@@ -110,7 +110,7 @@ def test_missing_evidence_unresolved_material():
         agent="GROWTH",
         task_id="t1",
         claim="No source given",
-        recommendation="support",
+        recommendation="proceed",
         assumptions=[
             Assumption(
                 name="free_to_paid_conversion",
@@ -148,7 +148,7 @@ def test_isolated_parameter_simulation_resolution():
     assert resolved.isolated_simulation_deltas is not None
     assert "B_usage_caps" in resolved.isolated_simulation_deltas
     assert resolved.verdict is not None
-    assert resolved.status in ["resolved", "unresolved_material", "unresolved_immaterial"]
+    assert resolved.status in ["resolved", "resolved_immaterial", "resolved_converged", "unresolved_material", "unresolved_immaterial"]
 
 @pytest.mark.asyncio
 async def test_dag_includes_discussion_node():

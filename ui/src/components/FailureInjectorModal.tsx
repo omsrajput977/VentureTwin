@@ -1,18 +1,21 @@
 import React, { useState } from 'react';
 
 interface Props {
-  onInject: (agent: string, mode: string) => void;
+  onInject: (agent: string, mode: string, persist?: boolean, failAttempts?: number) => void;
   disabled: boolean;
 }
 
 export const FailureInjector: React.FC<Props> = ({ onInject, disabled }) => {
   const [agent, setAgent] = useState('cto');
   const [mode, setMode] = useState('exception');
+  const [persist, setPersist] = useState(false);
+  const [failAttempts, setFailAttempts] = useState(1);
   const [injectedMsg, setInjectedMsg] = useState<string | null>(null);
 
   const handleInject = () => {
-    onInject(agent, mode);
-    setInjectedMsg(`Fault injected: ${agent.toUpperCase()} will trigger ${mode} on next execution.`);
+    onInject(agent, mode, persist, failAttempts);
+    const persistText = persist ? 'persistently' : `${failAttempts} attempt(s)`;
+    setInjectedMsg(`Fault injected: ${agent.toUpperCase()} will trigger ${mode} (${persistText}).`);
     setTimeout(() => setInjectedMsg(null), 4000);
   };
 
@@ -57,6 +60,33 @@ export const FailureInjector: React.FC<Props> = ({ onInject, disabled }) => {
           </select>
         </div>
 
+        <div>
+          <label className="block text-[11px] font-medium text-slate-400 mb-1">Attempts</label>
+          <input
+            type="number"
+            min={1}
+            max={5}
+            value={failAttempts}
+            onChange={(e) => setFailAttempts(Math.max(1, parseInt(e.target.value) || 1))}
+            disabled={disabled || persist}
+            className="bg-slate-950 border border-slate-800 rounded-lg px-2 py-1 text-xs text-slate-200 w-16 focus:outline-none focus:border-brand-500 disabled:opacity-40"
+          />
+        </div>
+
+        <div className="flex items-center gap-1.5 pt-5">
+          <input
+            type="checkbox"
+            id="persist_toggle"
+            checked={persist}
+            onChange={(e) => setPersist(e.target.checked)}
+            disabled={disabled}
+            className="rounded border-slate-800 text-brand-500 focus:ring-0"
+          />
+          <label htmlFor="persist_toggle" className="text-xs text-slate-300 cursor-pointer">
+            Persist (All attempts)
+          </label>
+        </div>
+
         <div className="pt-5">
           <button
             onClick={handleInject}
@@ -69,11 +99,10 @@ export const FailureInjector: React.FC<Props> = ({ onInject, disabled }) => {
       </div>
 
       {injectedMsg && (
-        <div className="mt-3 text-xs text-amber-400 bg-amber-500/10 border border-amber-500/20 p-2 rounded-lg">
-          {injectedMsg}
+        <div className="mt-3 p-2 bg-rose-500/10 border border-rose-500/30 rounded-lg text-xs text-rose-300">
+          ⚠️ {injectedMsg}
         </div>
       )}
     </div>
   );
 };
-

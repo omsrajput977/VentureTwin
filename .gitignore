@@ -47,4 +47,6 @@ htmlcov/
 *.db
 *.sqlite
 *.sqlite3
+venturetwin_checkpoints.db
+!tests/cassettes/
 

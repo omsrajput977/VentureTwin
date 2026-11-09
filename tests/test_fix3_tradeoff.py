@@ -64,3 +64,4 @@ def test_monotonicity_invariants():
 
     # Higher infra cost never raises net contribution
     assert out_infra["net_contribution_12"] < out_base["net_contribution_12"]
+

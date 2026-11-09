@@ -12,11 +12,11 @@ def decompose_decision(decision: Decision) -> TaskDAG:
 
     # 1. Parallel specialist analysis tasks
     analysis_tasks = [
-        Task(id="task_cfo_analysis", owner_agent="cfo", depends_on=[], kind="core_analysis"),
-        Task(id="task_growth_analysis", owner_agent="growth", depends_on=[], kind="core_analysis"),
-        Task(id="task_cto_analysis", owner_agent="cto", depends_on=[], kind="specialist_analysis"),
-        Task(id="task_customer_analysis", owner_agent="customer", depends_on=[], kind="specialist_analysis"),
-        Task(id="task_product_analysis", owner_agent="product", depends_on=[], kind="specialist_analysis")
+        Task(id="task_cfo_analysis", owner_agent="cfo", depends_on=[], kind="agent_analysis"),
+        Task(id="task_growth_analysis", owner_agent="growth", depends_on=[], kind="agent_analysis"),
+        Task(id="task_cto_analysis", owner_agent="cto", depends_on=[], kind="agent_analysis"),
+        Task(id="task_customer_analysis", owner_agent="customer", depends_on=[], kind="agent_analysis"),
+        Task(id="task_product_analysis", owner_agent="product", depends_on=[], kind="agent_analysis")
     ]
     for t in analysis_tasks:
         dag.add_task(t)
@@ -28,7 +28,7 @@ def decompose_decision(decision: Decision) -> TaskDAG:
         id="task_skeptic_audit",
         owner_agent="skeptic",
         depends_on=analysis_ids,
-        kind="agent_critique"
+        kind="skeptic_audit"
     ))
 
     # 3. Agent Discussion & Rebuttal Node (bounded 1-round peer challenge)
@@ -36,7 +36,7 @@ def decompose_decision(decision: Decision) -> TaskDAG:
         id="task_agent_discussion",
         owner_agent="supervisor",
         depends_on=["task_skeptic_audit"],
-        kind="agent_discussion"
+        kind="discussion"
     ))
 
     # 4. Conflict Detection and Simulation Resolution
@@ -44,7 +44,7 @@ def decompose_decision(decision: Decision) -> TaskDAG:
         id="task_conflict_resolution",
         owner_agent="supervisor",
         depends_on=["task_agent_discussion"],
-        kind="supervisor_coordination"
+        kind="conflict_resolution"
     ))
 
     # 5. Scenario Simulation Engine
@@ -52,30 +52,33 @@ def decompose_decision(decision: Decision) -> TaskDAG:
         id="task_simulation_engine",
         owner_agent="supervisor",
         depends_on=["task_conflict_resolution"],
-        kind="supervisor_coordination"
+        kind="simulation"
     ))
 
-    # 6. Workflow Verification Layer
+    # 6. Report Draft Generation
+    dag.add_task(Task(
+        id="task_report_draft",
+        owner_agent="supervisor",
+        depends_on=["task_simulation_engine"],
+        kind="report_draft"
+    ))
+
+    # 7. Workflow Verification Layer (Audits Draft Report)
     dag.add_task(Task(
         id="task_workflow_verification",
         owner_agent="skeptic",
-        depends_on=["task_simulation_engine"],
-        kind="agent_critique"
+        depends_on=["task_report_draft"],
+        kind="verification"
     ))
 
-    # 7. Consolidated Report Generation
+    # 8. Report Finalization & Cryptographic Stamping
     dag.add_task(Task(
-        id="task_report_generation",
+        id="task_report_finalize",
         owner_agent="supervisor",
         depends_on=["task_workflow_verification"],
-        kind="supervisor_coordination"
+        kind="report_finalize"
     ))
 
     # Validate DAG integrity
     dag.validate()
     return dag
-
-    # Validate DAG integrity
-    dag.validate()
-    return dag
-

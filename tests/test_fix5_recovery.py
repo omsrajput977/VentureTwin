@@ -10,7 +10,7 @@ from orchestrator.decomposer import decompose_decision
 @pytest.mark.asyncio
 async def test_instant_timeout_injection():
     agent = CFOAgent()
-    task = Task(id="t_cfo", owner_agent="CFO", kind="core_analysis")
+    task = Task(id="t_cfo", owner_agent="CFO", kind="agent_analysis")
     start = time.time()
     with pytest.raises(asyncio.TimeoutError):
         await agent.run(task, context={}, injected_failure="timeout")
@@ -18,17 +18,28 @@ async def test_instant_timeout_injection():
     assert duration < 0.2, f"Timeout took too long: {duration}s"
 
 @pytest.mark.asyncio
-async def test_core_task_failure_stops_workflow():
-    dec = Decision(id="d_core_fail", question="Should we launch a free plan?", type="free_plan", objective="Test")
+async def test_persistent_analysis_failure_degrades_workflow():
+    dec = Decision(id="d_core_degrade", question="Should we launch a free plan?", type="free_plan", objective="Test")
     supervisor = Supervisor()
-    # Inject persistent failure into CFO (core task)
-    supervisor.inject_failure("cfo", "persistent_exception")
+    # Inject persistent failure into CFO (analysis task)
+    supervisor.inject_failure("cfo", "exception", persist=True)
+
+    state = await supervisor.execute_workflow(dec)
+    assert state.status == "degraded"
+    assert "CFO" in state.recovered_agents or "CFO" in state.degraded_agents
+    assert state.report is not None
+
+@pytest.mark.asyncio
+async def test_supervisor_task_failure_stops_workflow():
+    dec = Decision(id="d_sup_fail", question="Should we launch a free plan?", type="free_plan", objective="Test")
+    supervisor = Supervisor()
+    async def bad_sim(task, state):
+        raise RuntimeError("Engine offline")
+    supervisor._run_simulation_task = bad_sim
 
     state = await supervisor.execute_workflow(dec)
     assert state.status == "failed"
-    # Ensure conflict resolution and report generation were NOT run
-    assert "task_conflict_resolution" in state.tasks
-    assert state.tasks["task_conflict_resolution"].status != "done"
+    assert "task_simulation_engine" in state.failed_ids
     assert state.report is None
 
 @pytest.mark.asyncio
@@ -46,3 +57,4 @@ async def test_non_core_specialist_failure_invokes_backup_analyst():
     cto_finding = next((f for f in state.findings if "CTO" in f.agent or "cto" in f.task_id), None)
     assert cto_finding is not None
     assert any("backup" in lim.lower() for lim in cto_finding.limitations) or cto_finding.agent == "BACKUP_ANALYST"
+

@@ -12,6 +12,7 @@ ProvenanceType = Literal[
 ]
 
 class Assumption(BaseModel):
+    id: Optional[str] = None
     name: str
     low: float
     base: float
@@ -22,6 +23,8 @@ class Assumption(BaseModel):
     confidence: float = Field(default=0.5, ge=0.0, le=1.0)
     proposed_by: Optional[str] = None
     challenged_by_skeptic: bool = False
+    revision_of: Optional[Any] = None
+    revision_rationale: Optional[str] = None
 
     @model_validator(mode="after")
     def validate_bounds(self) -> "Assumption":
@@ -53,9 +56,17 @@ class Evidence(BaseModel):
     source_ref: str
     snippet: str
 
+# Recommendation types
+RecommendationType = Literal[
+    "proceed",
+    "proceed_with_limits",
+    "needs_more_info",
+    "reject"
+]
+
 class AgentFindingDraft(BaseModel):
     claim: str
-    recommendation: str = "proceed"
+    recommendation: RecommendationType = "proceed"
     assumptions: List[DraftAssumption] = Field(default_factory=list)
     evidence: List[Evidence] = Field(default_factory=list)
     limitations: List[str] = Field(default_factory=list)
@@ -65,7 +76,7 @@ class Finding(BaseModel):
     agent: str
     task_id: str
     claim: str
-    recommendation: str = "proceed"
+    recommendation: RecommendationType = "proceed"
     assumptions: List[Assumption] = Field(default_factory=list)
     evidence: List[Evidence] = Field(default_factory=list)
     confidence: float = Field(default=0.5, ge=0.0, le=1.0)
@@ -73,6 +84,7 @@ class Finding(BaseModel):
     status: Literal["ok", "failed", "needs_more_info"] = "ok"
     degraded: bool = False
     degraded_reason: Optional[str] = None
+    recovered_via_backup: bool = False
 
 class Decision(BaseModel):
     id: str
@@ -81,6 +93,17 @@ class Decision(BaseModel):
     objective: str
     constraints: Dict[str, Any] = Field(default_factory=dict)
     created_at: str = Field(default_factory=lambda: datetime.now(timezone.utc).isoformat())
+
+TaskKind = Literal[
+    "agent_analysis",
+    "skeptic_audit",
+    "discussion",
+    "conflict_resolution",
+    "simulation",
+    "report_draft",
+    "verification",
+    "report_finalize"
+]
 
 class Task(BaseModel):
     id: str
@@ -92,13 +115,7 @@ class Task(BaseModel):
     attempts: int = 0
     max_attempts: int = 3
     error: Optional[str] = None
-    kind: Literal[
-        "core_analysis",
-        "specialist_analysis",
-        "agent_critique",
-        "agent_discussion",
-        "supervisor_coordination"
-    ] = "specialist_analysis"
+    kind: TaskKind = "agent_analysis"
 
 class Conflict(BaseModel):
     id: str
@@ -109,7 +126,7 @@ class Conflict(BaseModel):
     resolution: Optional[str] = None
     simulation_ids: List[str] = Field(default_factory=list)
     unresolved: bool = False
-    status: Literal["resolved", "unresolved_material", "unresolved_immaterial"] = "resolved"
+    status: Literal["resolved", "resolved_immaterial", "resolved_converged", "unresolved_material", "unresolved_immaterial"] = "resolved"
     verdict: Optional[str] = None
     resolution_method: Optional[Literal["simulation_isolation", "rebuttal_concession", "skeptic_audit", "procedural"]] = None
     sides: List[Dict[str, Any]] = Field(default_factory=list)
@@ -179,7 +196,8 @@ class Event(BaseModel):
         "recovery_done",
         "verification_passed",
         "verification_failed",
-        "report_ready"
+        "report_ready",
+        "workflow_failed"
     ]
     agent: str
     payload: Dict[str, Any] = Field(default_factory=dict)

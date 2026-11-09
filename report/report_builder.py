@@ -26,7 +26,8 @@ def build_consolidated_report(
     company_data: Optional[Dict[str, Any]] = None
 ) -> Report:
     data = company_data or load_company_data()
-    ranked = rank_strategies(sim_runs, decision.constraints)
+    model_cfg = load_model_config()
+    ranked = rank_strategies(sim_runs, decision.constraints, company_data=data)
     conf_assessment = compute_confidence(
         ranked=ranked,
         mc_summaries=mc_summary,
@@ -35,56 +36,58 @@ def build_consolidated_report(
         conflicts=conflicts
     )
 
-    top_strategy = ranked[0] if ranked else None
+    min_runway_constraint = float(decision.constraints.get('min_runway_months', 10.0)) if decision.constraints else 10.0
+    feasible_strategies = [s for s in ranked if s.is_feasible]
+    top_strategy = feasible_strategies[0] if feasible_strategies else (ranked[0] if ranked else None)
     top_name = top_strategy.strategy if top_strategy else "None"
     top_name_pretty = top_name.replace("_", " ")
 
+    flip_thresh_str = f"{flip_point_info.get('threshold', 0.0) * 100:.2f}%" if flip_point_info.get('has_flip_point') else "N/A"
+
     if top_strategy and top_strategy.is_feasible:
         rec_title = f"Proceed with {top_name_pretty}"
+        exec_summary = (
+            f"Recommendation: {rec_title} (Confidence: {conf_assessment.level}). "
+            f"Under expected operating parameters, {top_name_pretty} generates an estimated ${top_strategy.net_contribution_12:,.2f} "
+            f"in cumulative 12-month net contribution while preserving {top_strategy.runway_months_12:.1f} months of cash runway "
+            f"(safety threshold: {min_runway_constraint:.1f} mo). "
+            f"The recommendation remains viable as long as free-to-paid conversion stays above {flip_thresh_str}."
+        )
     else:
-        rec_title = "Do not proceed with any free-plan strategy under current constraints"
+        rec_title = "Do not proceed"
+        exec_summary = (
+            f"Recommendation: Do not proceed (Confidence: Low). "
+            f"No strategy satisfies the minimum runway requirement of {min_runway_constraint:.1f} months. "
+            f"Under current constraints, all evaluated options breach the required cash safety threshold."
+        )
 
     reg = NumberRegistry()
 
-    # 1. Executive Summary
-    flip_thresh_str = f"{flip_point_info.get('threshold', 0.0) * 100:.2f}%" if flip_point_info.get('has_flip_point') else "N/A"
-    exec_summary = (
-        f"Recommendation: {rec_title} (Confidence: {conf_assessment.level}). "
-        f"Under expected operating parameters, {top_name_pretty} generates an estimated ${top_strategy.net_contribution_12:,.2f} "
-        f"in cumulative 12-month net contribution while preserving {top_strategy.runway_months_12:.1f} months of cash runway "
-        f"(safety threshold: {decision.constraints.get('min_runway_months', 10.0):.1f} mo). "
-        f"The recommendation remains viable as long as free-to-paid conversion stays above {flip_thresh_str}."
-    )
-
-    if top_strategy:
-        reg.register(
+    # 1. Executive Summary numbers
+    if top_strategy and top_strategy.is_feasible:
+        reg.register_source(
             value=top_strategy.net_contribution_12,
             path="sections.executive_summary.net_contribution_12",
-            origin=f"simulation_run:{top_strategy.strategy}_expected",
-            expected_value=top_strategy.net_contribution_12
+            source_ref=f"sim:{top_strategy.strategy}.net_contribution_12"
         )
-        reg.register(
+        reg.register_source(
             value=top_strategy.runway_months_12,
             path="sections.executive_summary.runway_months_12",
-            origin=f"simulation_run:{top_strategy.strategy}_expected",
-            expected_value=top_strategy.runway_months_12
+            source_ref=f"sim:{top_strategy.strategy}.runway_months_12"
         )
 
-    min_runway_constraint = float(decision.constraints.get('min_runway_months', 10.0))
-    reg.register(
+    reg.register_source(
         value=min_runway_constraint,
         path="sections.executive_summary.min_runway_months",
-        origin="decision.constraints.min_runway_months",
-        expected_value=min_runway_constraint
+        source_ref="company:financials.target_min_runway_months"
     )
 
     if flip_point_info.get("has_flip_point"):
         thresh = float(flip_point_info.get("threshold", 0.0))
-        reg.register(
+        reg.register_source(
             value=thresh,
             path="sections.flip_points.threshold",
-            origin="calculation:flip_point",
-            expected_value=thresh
+            source_ref="flip:threshold"
         )
 
     # 2. Current Position
@@ -101,39 +104,40 @@ def build_consolidated_report(
         "synthetic_data_badge": True
     }
 
-    for k, v in [
-        ("mrr", fin.get("mrr", 0.0)),
-        ("arr", fin.get("arr", 0.0)),
-        ("cash_balance", fin.get("cash_balance", 0.0)),
-        ("runway_months", fin.get("runway_months", 0.0)),
-        ("paying_customers", cust.get("total_paying", 0))
-    ]:
-        reg.register(
-            value=float(v),
-            path=f"sections.current_position.{k}",
-            origin=f"company_data.{k}",
-            expected_value=float(v)
-        )
+    reg.register_source(value=float(fin.get("mrr", 0.0)), path="sections.current_position.mrr", source_ref="company:financials.mrr")
+    reg.register_source(value=float(fin.get("arr", 0.0)), path="sections.current_position.arr", source_ref="company:financials.arr")
+    reg.register_source(value=float(fin.get("cash_balance", 0.0)), path="sections.current_position.cash_balance", source_ref="company:financials.cash_balance")
+    reg.register_source(value=float(fin.get("runway_months", 0.0)), path="sections.current_position.runway_months", source_ref="company:financials.runway_months")
+    reg.register_source(value=float(cust.get("total_paying", 0)), path="sections.current_position.paying_customers", source_ref="company:customers.total_paying")
 
     # 3. Strategies Compared
     strategies_compared = [r.model_dump() for r in ranked]
     for i, strat in enumerate(ranked):
-        reg.register(
+        reg.register_source(
             value=strat.net_contribution_12,
             path=f"sections.strategies_compared[{i}].net_contribution_12",
-            origin=f"simulation_run:{strat.strategy}",
-            expected_value=strat.net_contribution_12
+            source_ref=f"sim:{strat.strategy}.net_contribution_12"
         )
-        reg.register(
+        reg.register_source(
             value=strat.runway_months_12,
             path=f"sections.strategies_compared[{i}].runway_months_12",
-            origin=f"simulation_run:{strat.strategy}",
-            expected_value=strat.runway_months_12
+            source_ref=f"sim:{strat.strategy}.runway_months_12"
+        )
+        reg.register_source(
+            value=strat.mrr_12,
+            path=f"sections.strategies_compared[{i}].mrr_12",
+            source_ref=f"sim:{strat.strategy}.mrr_12"
+        )
+        reg.register_source(
+            value=strat.gross_margin_12,
+            path=f"sections.strategies_compared[{i}].gross_margin_12",
+            source_ref=f"sim:{strat.strategy}.gross_margin_12"
         )
 
-    # 4. Scenario Table
+    # 4. Scenario Table (excluding isolated conflict runs)
     scenario_table = []
-    for i, r in enumerate(sim_runs):
+    matrix_runs = [r for r in sim_runs if not r.scenario.startswith("conflict:")]
+    for i, r in enumerate(matrix_runs):
         out = r.outputs
         row = {
             "strategy": r.strategy,
@@ -146,26 +150,76 @@ def build_consolidated_report(
         }
         scenario_table.append(row)
 
-        reg.register(
+        reg.register_source(
             value=float(row["mrr_12"]),
             path=f"sections.scenario_table[{i}].mrr_12",
-            origin=f"simulation_run:{r.id}",
-            expected_value=float(row["mrr_12"])
+            source_ref=f"sim:{r.id}.mrr_12"
         )
-        reg.register(
+        reg.register_source(
             value=float(row["net_contribution_12"]),
             path=f"sections.scenario_table[{i}].net_contribution_12",
-            origin=f"simulation_run:{r.id}",
-            expected_value=float(row["net_contribution_12"])
+            source_ref=f"sim:{r.id}.net_contribution_12"
         )
-        reg.register(
+        reg.register_source(
             value=float(row["runway_months_12"]),
             path=f"sections.scenario_table[{i}].runway_months_12",
-            origin=f"simulation_run:{r.id}",
-            expected_value=float(row["runway_months_12"])
+            source_ref=f"sim:{r.id}.runway_months_12"
+        )
+        reg.register_source(
+            value=float(row["gross_margin_12"]),
+            path=f"sections.scenario_table[{i}].gross_margin_12",
+            source_ref=f"sim:{r.id}.gross_margin_12"
         )
 
-    # 5. Conflicts Resolution
+    # 5. Sensitivity (tornado)
+    for item in tornado_data:
+        p = item.get("assumption_name") or item.get("param") or item.get("parameter") or ""
+        sw = float(item.get("swing", 0.0))
+        reg.register_source(
+            value=sw,
+            path=f"sections.tornado_sensitivity.{p}.swing",
+            source_ref=f"tornado:{p}.swing"
+        )
+
+    # 6. Outcome ranges (Monte Carlo quantiles & probabilities)
+    if mc_summary:
+        if "quantiles" in mc_summary:
+            for st_key, q_dict in mc_summary["quantiles"].items():
+                for metric_name, m_vals in q_dict.items():
+                    if isinstance(m_vals, dict):
+                        for qk in ["p10", "p50", "p90"]:
+                            if qk in m_vals:
+                                qv = float(m_vals[qk])
+                                reg.register_source(
+                                    value=qv,
+                                    path=f"sections.outcome_ranges.{st_key}.{metric_name}.{qk}",
+                                    source_ref=f"mc:{st_key}.{metric_name}_{qk}"
+                                )
+        if "strategies" in mc_summary:
+            for s_name, s_data in mc_summary["strategies"].items():
+                p_bst = float(s_data.get("p_best", 0.0))
+                p_feas = float(s_data.get("p_feasible", 0.0))
+                reg.register_source(value=p_bst, path=f"sections.monte_carlo.{s_name}.p_best", source_ref=f"mc:{s_name}.p_best")
+                reg.register_source(value=p_feas, path=f"sections.monte_carlo.{s_name}.p_feasible", source_ref=f"mc:{s_name}.p_feasible")
+                reg.register_source(value=round(p_bst * 100.0, 1), path=f"sections.monte_carlo.{s_name}.p_best_pct", source_ref=f"mc:{s_name}.p_best_pct")
+                reg.register_source(value=round(p_feas * 100.0, 1), path=f"sections.monte_carlo.{s_name}.p_feasible_pct", source_ref=f"mc:{s_name}.p_feasible_pct")
+
+    # 7. Model Constants
+    for mc_key, mc_val in model_cfg.items():
+        if isinstance(mc_val, (int, float)):
+            reg.register_source(
+                value=float(mc_val),
+                path=f"sections.model_constants.{mc_key}",
+                source_ref=f"model_config:{mc_key}"
+            )
+        elif isinstance(mc_val, dict) and "default" in mc_val:
+            reg.register_source(
+                value=float(mc_val["default"]),
+                path=f"sections.model_constants.{mc_key}.default",
+                source_ref=f"model_config:{mc_key}.default"
+            )
+
+    # 8. Conflicts Resolution
     conflicts_resolution = [
         {
             "id": c.id,
@@ -173,16 +227,17 @@ def build_consolidated_report(
             "agents": c.agents,
             "disputed_item": c.disputed_item,
             "resolution": c.resolution,
+            "verdict": c.verdict,
             "simulation_ids": c.simulation_ids,
             "unresolved": c.unresolved
         }
         for c in conflicts
     ]
 
-    # 6. Assumption Ledger
+    # 9. Assumption Ledger
     ledger = [asm.model_dump() for asm in assumptions]
 
-    # 7. Risks & Execution Plan
+    # 10. Risks & Execution Plan
     risks_and_triggers = [
         {
             "risk": "Conversion degradation below threshold",
@@ -191,7 +246,7 @@ def build_consolidated_report(
         },
         {
             "risk": "Runway compression below safety floor",
-            "trigger": f"Runway falls below {decision.constraints.get('min_runway_months', 10.0):.1f} months",
+            "trigger": f"Runway falls below {min_runway_constraint:.1f} months",
             "mitigation": "Pause free tier new onboarding; migrate high-usage free users to paid Starter."
         }
     ]
@@ -210,7 +265,30 @@ def build_consolidated_report(
         }
     ]
 
-    # 8. Verification Summary
+    # Register execution plan thresholds
+    reg.register_source(value=min_runway_constraint, path="sections.execution_plan.min_runway_months", source_ref="company:financials.target_min_runway_months")
+    reg.register_source(value=70.0, path="sections.execution_plan.gross_margin_gate", source_ref="model_config:target_gross_margin")
+    if flip_point_info.get("has_flip_point"):
+        thresh = float(flip_point_info.get("threshold", 0.0))
+        reg.register_source(value=thresh, path="sections.execution_plan.flip_threshold", source_ref="flip:threshold")
+
+    # Register confidence assessment rationale numbers
+    if len(ranked) >= 2:
+        diff_lead = round(ranked[0].net_contribution_12 - ranked[1].net_contribution_12, 2)
+        reg.register_source(
+            value=diff_lead,
+            path="sections.confidence_assessment.margin_lead",
+            source_ref="calc:margin_lead"
+        )
+    if assumptions:
+        avg_asm_conf = round(sum(a.confidence for a in assumptions) / len(assumptions), 4)
+        reg.register_source(
+            value=round(avg_asm_conf * 100.0, 1),
+            path="sections.confidence_assessment.avg_confidence",
+            source_ref="calc:avg_confidence"
+        )
+
+    # 11. Verification Summary
     verif_summary = [v.model_dump() for v in verification_results]
 
     sections = {
@@ -225,7 +303,7 @@ def build_consolidated_report(
         "assumption_ledger": ledger,
         "risks_and_triggers": risks_and_triggers,
         "execution_plan": execution_plan,
-        "model_constants": load_model_config(),
+        "model_constants": model_cfg,
         "llm_mode": os.getenv("LLM_MODE", "mock").lower(),
         "outcome_ranges": mc_summary.get("quantiles", {}) if mc_summary else {},
         "verification_summary": verif_summary,
@@ -252,7 +330,6 @@ def render_markdown_report(report: Report, workflow_status: str = "completed") -
     """
     Renders human-readable GitHub-flavored markdown report with dynamic header status.
     """
-    # Header status calculation based on verification and workflow
     verif_failed = any(v.get("status") == "failed" for v in report.sections.get("verification_summary", []))
     if verif_failed:
         header_status = "Status: Verification Failed"
@@ -304,4 +381,3 @@ def render_markdown_report(report: Report, workflow_status: str = "completed") -
         lines.append(f"> {d}")
 
     return "\n".join(lines)
-

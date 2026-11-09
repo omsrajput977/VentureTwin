@@ -1,24 +1,32 @@
-import uuid
+import hashlib
 from typing import List, Dict, Any, Optional
 from state.schemas import Conflict, Finding, Assumption, SimulationRun
 from simulation.saas_model import run_saas_dynamics
 from simulation.params import SIM_PARAMS
 from data.loader import load_company_data
+from report.decision_logic import rank_strategies, get_min_runway
+
+def generate_deterministic_iso_sim_id(conflict_id: str, param_name: str, agent: str, strategy: str) -> str:
+    key_str = f"{conflict_id}||{param_name}||{agent}||{strategy}"
+    return f"sim_iso_{hashlib.sha256(key_str.encode('utf-8')).hexdigest()[:8]}"
 
 def resolve_conflict_via_simulation(
     conflict: Conflict,
     findings: List[Finding],
     company_data: Optional[Dict[str, Any]] = None,
     baseline_params: Optional[Dict[str, float]] = None,
-    strategy: str = "B_usage_caps"
+    decision: Optional[Any] = None,
+    strategy: str = "B_usage_caps",
+    state_simulation_runs: Optional[List[SimulationRun]] = None
 ) -> Conflict:
     """
     Settles conflict using deterministic simulation runs by ISOLATING ONLY the disputed parameter.
-    Never runs full conflated finding sets. Computes signed net contribution deltas per strategy.
+    Computes signed net contribution deltas per strategy and verifies runway feasibility against get_min_runway.
     """
     data = company_data or load_company_data()
-    min_runway = float(data.get("financials", {}).get("target_min_runway_months", 10.0))
+    min_runway = get_min_runway(decision, data)
 
+    # Missing evidence conflict
     if conflict.type == "missing_evidence":
         conflict.status = "unresolved_material"
         conflict.unresolved = True
@@ -40,7 +48,6 @@ def resolve_conflict_via_simulation(
         conflict.resolution_method = "simulation_isolation"
         sides = conflict.sides
         if not sides and len(conflict.agents) >= 2:
-            # Reconstruct sides from findings if not explicitly populated
             sides = []
             for ag in conflict.agents:
                 f = next((f for f in findings if f.agent.lower() == ag.lower()), None)
@@ -56,92 +63,172 @@ def resolve_conflict_via_simulation(
             conflict.resolution = f"Single side available for {conflict.disputed_item}; accepted as baseline."
             return conflict
 
-        side1 = sides[0]
-        side2 = sides[1]
+        # Sort sides by base to pick extremes and median
+        sorted_sides = sorted(sides, key=lambda s: float(s["base"]))
+        selected_sides = [sorted_sides[0], sorted_sides[-1]]
+        if len(sorted_sides) >= 3:
+            median_side = sorted_sides[len(sorted_sides) // 2]
+            if median_side not in selected_sides:
+                selected_sides.append(median_side)
+
         param_name = conflict.disputed_item
-
-        # Run 3 strategies isolating ONLY param_name
-        deltas: Dict[str, float] = {}
-        strat_results: Dict[str, Dict[str, Any]] = {}
-
         strategies = ["A_limited_features", "B_usage_caps", "C_no_free_plan"]
-        min_runway_observed = 999.0
+        side_rankings = []
+        simulation_ids = []
+        deltas: Dict[str, float] = {}
 
+        for side in selected_sides:
+            side_agent = side["agent"]
+            side_base = float(side["base"])
+            p_side = dict(base)
+            p_side[param_name] = side_base
+
+            side_runs = []
+            for strat in strategies:
+                sim_id = generate_deterministic_iso_sim_id(conflict.id, param_name, side_agent, strat)
+                simulation_ids.append(sim_id)
+                res = run_saas_dynamics(12, strat, p_side, data)
+
+                run_obj = SimulationRun(
+                    id=sim_id,
+                    strategy=strat,
+                    scenario=f"conflict:{param_name}:{side_agent}",
+                    parameters=p_side,
+                    outputs=res,
+                    seed=42
+                )
+                side_runs.append(run_obj)
+                if state_simulation_runs is not None:
+                    state_simulation_runs.append(run_obj)
+
+            ranked = rank_strategies(side_runs, min_runway_default=min_runway, company_data=data)
+            top = ranked[0] if ranked else None
+            side_rankings.append({
+                "agent": side_agent,
+                "base": side_base,
+                "top_strategy": top.strategy if top else "None",
+                "top_feasible": top.is_feasible if top else False,
+                "top_net": top.net_contribution_12 if top else 0.0,
+                "top_runway": top.runway_months_12 if top else 0.0,
+                "runs": {r.strategy: r.outputs for r in side_runs}
+            })
+
+        conflict.simulation_ids = list(dict.fromkeys(simulation_ids))
+
+        # Calculate signed deltas between low extreme and high extreme
+        s_low = side_rankings[0]
+        s_high = side_rankings[1]
         for strat in strategies:
-            p1 = dict(base)
-            p1[param_name] = float(side1["base"])
-            res1 = run_saas_dynamics(12, strat, p1, data)
-
-            p2 = dict(base)
-            p2[param_name] = float(side2["base"])
-            res2 = run_saas_dynamics(12, strat, p2, data)
-
-            net_delta = res1["net_contribution_12"] - res2["net_contribution_12"]
-            deltas[strat] = round(net_delta, 2)
-            strat_results[strat] = {"res1": res1, "res2": res2}
-
-            min_runway_observed = min(min_runway_observed, res1["runway_months_12"], res2["runway_months_12"])
-
+            net_low = s_low["runs"][strat]["net_contribution_12"]
+            net_high = s_high["runs"][strat]["net_contribution_12"]
+            deltas[strat] = round(net_high - net_low, 2)
         conflict.isolated_simulation_deltas = deltas
-        conflict.simulation_ids = [f"sim_iso_{uuid.uuid4().hex[:8]}", f"sim_iso_{uuid.uuid4().hex[:8]}"]
 
-        # Check runway threshold under target strategy
-        strat_res = strat_results.get(strategy, strat_results["B_usage_caps"])
-        net_a = strat_res["res1"]["net_contribution_12"]
-        net_b = strat_res["res2"]["net_contribution_12"]
-        runway_a = strat_res["res1"]["runway_months_12"]
-        runway_b = strat_res["res2"]["runway_months_12"]
-        strat_min_runway = min(runway_a, runway_b)
+        # Determine status
+        top_strats = {sr["top_strategy"] for sr in side_rankings}
+        all_feasible = all(sr["top_feasible"] for sr in side_rankings)
+        min_runway_observed = min(sr["top_runway"] for sr in side_rankings)
 
-        if strat_min_runway < min_runway:
+        target_delta = deltas.get(strategy, 0.0)
+
+        if not all_feasible or min_runway_observed < min_runway:
             conflict.status = "unresolved_material"
             conflict.unresolved = True
             conflict.verdict = (
-                f"Material runway breach: Parameter '{param_name}' under conservative estimate yields {strat_min_runway:.1f} months runway, "
-                f"violating the {min_runway:.1f} months runway safety constraint."
+                f"Material runway breach: Parameter '{param_name}' under conservative estimate yields {min_runway_observed:.1f} months runway, "
+                f"violating the {min_runway:.1f} months runway floor."
             )
+            signed_delta_str = f"+${target_delta:,.0f}" if target_delta >= 0 else f"-${abs(target_delta):,.0f}"
             conflict.resolution = (
-                f"Unresolved divergence: Under {side1['agent']}'s value ({side1['base']}), net contribution is ${net_a:,.2f} "
-                f"({runway_a:.1f} months runway). Under {side2['agent']}'s value ({side2['base']}), net contribution is ${net_b:,.2f} "
-                f"({runway_b:.1f} months runway). The conservative runway ({strat_min_runway:.1f} months runway) falls below target ({min_runway:.1f} months runway)."
+                f"Unresolved divergence: Under {s_low['agent']} ({s_low['base']}), net contribution delta is {signed_delta_str} "
+                f"and runway is {s_low['top_runway']:.1f} months runway. Runway drops below required floor ({min_runway:.1f} months runway)."
+            )
+        elif len(top_strats) == 1:
+            shared_top = list(top_strats)[0]
+            signed_delta_str = f"+${target_delta:,.0f}" if target_delta >= 0 else f"-${abs(target_delta):,.0f}"
+            # Immaterial if top strategy and feasibility are identical
+            conflict.status = "resolved_immaterial"
+            conflict.unresolved = False
+            conflict.verdict = f"Resolved (immaterial): All sides rank {shared_top} as optimal with solvent runway."
+            conflict.resolution = (
+                f"Resolved by simulation: Parameter '{param_name}' ranges across {s_low['agent']} ({s_low['base']}) and "
+                f"{s_high['agent']} ({s_high['base']}). Under {strategy}, 12mo net contribution delta is {signed_delta_str}. "
+                f"Both sides maintain solvent runway ({s_low['top_runway']:.1f}mo and {s_high['top_runway']:.1f}mo) >= {min_runway:.1f} months runway."
             )
         else:
+            signed_delta_str = f"+${target_delta:,.0f}" if target_delta >= 0 else f"-${abs(target_delta):,.0f}"
             conflict.status = "resolved"
             conflict.unresolved = False
-            delta_val = deltas.get(strategy, 0.0)
-            conflict.verdict = (
-                f"Resolved: Isolated delta on {strategy} is ${abs(delta_val):,.2f}. "
-                f"Both sides satisfy the {min_runway:.1f} months runway floor ({strat_min_runway:.1f} months runway observed)."
-            )
+            conflict.verdict = f"Resolved: Isolated simulation confirms strategy ranking shift across parameter extremes."
             conflict.resolution = (
-                f"Resolved by simulation: Isolated parameter '{param_name}' across {side1['agent']} ({side1['base']}) and "
-                f"{side2['agent']} ({side2['base']}). Under {strategy}, 12mo net contribution delta is ${abs(delta_val):,.2f}. "
-                f"Both scenarios maintain solvent runway ({runway_a:.1f}mo and {runway_b:.1f}mo) >= {min_runway:.1f} months runway."
+                f"Resolved by simulation: Isolated parameter '{param_name}' across {s_low['agent']} ({s_low['base']}) and "
+                f"{s_high['agent']} ({s_high['base']}). 12mo net contribution delta is {signed_delta_str}."
             )
         return conflict
 
     # 2. Contradictory recommendations
     elif conflict.type == "contradictory_recommendations":
         conflict.resolution_method = "simulation_isolation"
-        res_a = run_saas_dynamics(12, "A_limited_features", base, data)
-        res_b = run_saas_dynamics(12, "B_usage_caps", base, data)
-        res_c = run_saas_dynamics(12, "C_no_free_plan", base, data)
+        strategies = ["A_limited_features", "B_usage_caps", "C_no_free_plan"]
+        sim_runs = []
+        simulation_ids = []
+
+        for strat in strategies:
+            sim_id = generate_deterministic_iso_sim_id(conflict.id, "recommendation", "baseline", strat)
+            simulation_ids.append(sim_id)
+            res = run_saas_dynamics(12, strat, base, data)
+            run_obj = SimulationRun(
+                id=sim_id,
+                strategy=strat,
+                scenario="conflict:recommendation:baseline",
+                parameters=base,
+                outputs=res,
+                seed=42
+            )
+            sim_runs.append(run_obj)
+            if state_simulation_runs is not None:
+                state_simulation_runs.append(run_obj)
+
+        conflict.simulation_ids = simulation_ids
+        ranked = rank_strategies(sim_runs, min_runway_default=min_runway, company_data=data)
+
+        res_map = {r.strategy: r.outputs for r in sim_runs}
+        res_a = res_map["A_limited_features"]
+        res_b = res_map["B_usage_caps"]
+        res_c = res_map["C_no_free_plan"]
 
         deltas = {
-            "A_limited_features": round(res_a["net_contribution_12"], 2),
-            "B_usage_caps": round(res_b["net_contribution_12"], 2),
-            "C_no_free_plan": round(res_c["net_contribution_12"], 2)
+            "A_limited_features": round(res_a["net_contribution_12"] - res_c["net_contribution_12"], 2),
+            "B_usage_caps": round(res_b["net_contribution_12"] - res_c["net_contribution_12"], 2),
+            "C_no_free_plan": 0.0
         }
         conflict.isolated_simulation_deltas = deltas
-        conflict.simulation_ids = [f"sim_iso_{uuid.uuid4().hex[:8]}", f"sim_iso_{uuid.uuid4().hex[:8]}"]
-        conflict.status = "resolved"
-        conflict.unresolved = False
-        conflict.verdict = "Reconciled recommendation to proceed_with_limits via usage caps."
-        conflict.resolution = (
-            f"Resolved by simulation: Strategy B (usage caps) yields ${res_b['net_contribution_12']:,.2f} net contribution "
-            f"with {res_b['gross_margin_12']*100:.1f}% gross margin and {res_b['runway_months_12']:.1f}mo runway, "
-            f"mitigating unconstrained rollout downside while outperforming no-free-plan (${res_c['net_contribution_12']:,.2f})."
-        )
+
+        # Check if feasible strategy exists with net contribution > C
+        feasible_outperformers = [
+            (strat, res_map[strat]) for strat in ["A_limited_features", "B_usage_caps"]
+            if res_map[strat]["runway_months_12"] >= min_runway and res_map[strat]["net_contribution_12"] > res_c["net_contribution_12"]
+        ]
+
+        if feasible_outperformers:
+            best_strat, best_res = max(feasible_outperformers, key=lambda x: x[1]["net_contribution_12"])
+            margin_over_c = best_res["net_contribution_12"] - res_c["net_contribution_12"]
+            conflict.status = "resolved"
+            conflict.unresolved = False
+            conflict.verdict = f"Simulation confirms {best_strat} outperforms status quo (C) while maintaining solvent runway."
+            conflict.resolution = (
+                f"Resolved by simulation: Strategy {best_strat} generates ${best_res['net_contribution_12']:,.2f} 12mo net contribution "
+                f"({margin_over_c:+,.0f} vs no-free-plan Strategy C) with {best_res['runway_months_12']:.1f} months runway >= {min_runway:.1f}mo floor. "
+                "Reject recommendation is contradicted by empirical runway and contribution margins."
+            )
+        else:
+            conflict.status = "resolved"
+            conflict.unresolved = False
+            conflict.verdict = "Simulation confirms status quo (Strategy C) preserves runway; free plan not feasible."
+            conflict.resolution = (
+                f"Resolved by simulation: Free tier strategies fail to exceed status quo net contribution (${res_c['net_contribution_12']:,.2f}) "
+                f"or breach the {min_runway:.1f} months runway safety floor. Proceed recommendation is contradicted."
+            )
         return conflict
 
     # Default fallback
@@ -150,4 +237,3 @@ def resolve_conflict_via_simulation(
     conflict.resolution_method = "procedural"
     conflict.resolution = f"Procedural confirmation: {conflict.disputed_item} checked against baseline."
     return conflict
-

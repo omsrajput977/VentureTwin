@@ -94,7 +94,7 @@ def simulate(
 
 
 def run_monte_carlo(
-    strategy: str,
+    strategy: str = "B_usage_caps",
     assumptions_or_reconciled: Optional[Union[List[Assumption], ReconciledParams]] = None,
     company_data: Optional[Dict[str, Any]] = None,
     n_samples: int = 500,
@@ -102,8 +102,9 @@ def run_monte_carlo(
     assumptions: Optional[List[Assumption]] = None
 ) -> Dict[str, Any]:
     """
-    Runs Monte Carlo simulation with local Generator (no global seed mutation).
-    Reports p10/p50/p90 for MRR, Net contribution, Runway, plus p_feasible.
+    Runs Monte Carlo simulation with local Generator across all 3 strategies.
+    Apples-to-apples comparison on shared sample draws.
+    Computes p10/p50/p90, p_feasible, and dynamic p_best.
     """
     target = assumptions_or_reconciled if assumptions_or_reconciled is not None else assumptions
     if target is None:
@@ -118,12 +119,11 @@ def run_monte_carlo(
     else:
         reconciled = reconcile_assumptions(target)
 
-    samples_net_12 = []
-    samples_mrr_12 = []
-    samples_runway_12 = []
-
+    all_strategies = ["A_limited_features", "B_usage_caps", "C_no_free_plan"]
     param_names = list(reconciled.params.keys())
 
+    # Generate shared parameter draws
+    shared_draws = []
     for _ in range(n_samples):
         sampled_params = {}
         for name in param_names:
@@ -131,46 +131,92 @@ def run_monte_carlo(
             if abs(p.high - p.low) < 1e-6:
                 sampled_params[name] = p.base
             else:
-                mode = p.base
-                # Triangular distribution using isolated generator
-                sampled_params[name] = float(rng.triangular(p.low, mode, p.high))
+                sampled_params[name] = float(rng.triangular(p.low, p.base, p.high))
+        shared_draws.append(sampled_params)
 
-        out = run_saas_dynamics(months=12, strategy=strategy, params=sampled_params, company_data=data)
-        samples_net_12.append(out["net_contribution_12"])
-        samples_mrr_12.append(out["mrr_12"])
-        samples_runway_12.append(out["runway_months_12"])
+    # Evaluate all strategies
+    strat_results = {s: {"net": [], "mrr": [], "runway": []} for s in all_strategies}
+    best_counts = {s: 0 for s in all_strategies}
 
-    arr_net = np.array(samples_net_12)
-    arr_mrr = np.array(samples_mrr_12)
-    arr_runway = np.array(samples_runway_12)
+    for draw in shared_draws:
+        draw_outputs = {}
+        for s in all_strategies:
+            out = run_saas_dynamics(months=12, strategy=s, params=draw, company_data=data)
+            strat_results[s]["net"].append(out["net_contribution_12"])
+            strat_results[s]["mrr"].append(out["mrr_12"])
+            strat_results[s]["runway"].append(out["runway_months_12"])
+            draw_outputs[s] = out
 
-    p_feasible = float(np.mean(arr_runway >= min_runway))
+        # Find best strategy in this draw among feasible ones
+        feasible_strats = []
+        for s in all_strategies:
+            r12 = draw_outputs[s]["runway_months_12"]
+            hist = draw_outputs[s].get("history", [])
+            min_r = min((m["runway_months"] for m in hist[:12]), default=r12)
+            if r12 >= min_runway and min_r >= min_runway:
+                feasible_strats.append(s)
 
-    return {
-        "strategy": strategy,
-        "n_samples": n_samples,
-        "seed": seed,
-        "net_contribution_12": {
-            "mean": round(float(np.mean(arr_net)), 2),
-            "std": round(float(np.std(arr_net)), 2),
-            "p10": round(float(np.percentile(arr_net, 10)), 2),
-            "p50": round(float(np.percentile(arr_net, 50)), 2),
-            "p90": round(float(np.percentile(arr_net, 90)), 2),
-            "prob_positive": round(float(np.mean(arr_net > 0)), 4)
-        },
-        "mrr_12": {
-            "p10": round(float(np.percentile(arr_mrr, 10)), 2),
-            "p50": round(float(np.percentile(arr_mrr, 50)), 2),
-            "p90": round(float(np.percentile(arr_mrr, 90)), 2)
-        },
-        "runway_months_12": {
-            "p10": round(float(np.percentile(arr_runway, 10)), 1),
-            "p50": round(float(np.percentile(arr_runway, 50)), 1),
-            "p90": round(float(np.percentile(arr_runway, 90)), 1)
-        },
-        "p_feasible": round(p_feasible, 4),
-        "p_best": 0.85 if strategy == "B_usage_caps" else 0.10 if strategy == "A_limited_features" else 0.05
-    }
+        if feasible_strats:
+            best_strat = max(feasible_strats, key=lambda s: draw_outputs[s]["net_contribution_12"])
+            best_counts[best_strat] += 1
+
+    # Build per-strategy summaries
+    strategies_summary = {}
+    quantiles_summary = {}
+    probabilities_summary = {}
+
+    for s in all_strategies:
+        arr_net = np.array(strat_results[s]["net"])
+        arr_mrr = np.array(strat_results[s]["mrr"])
+        arr_runway = np.array(strat_results[s]["runway"])
+
+        p_feas = float(np.mean(arr_runway >= min_runway))
+        p_bst = float(best_counts[s] / n_samples)
+
+        s_summary = {
+            "strategy": s,
+            "n_samples": n_samples,
+            "seed": seed,
+            "net_contribution_12": {
+                "mean": round(float(np.mean(arr_net)), 2),
+                "std": round(float(np.std(arr_net)), 2),
+                "p10": round(float(np.percentile(arr_net, 10)), 2),
+                "p50": round(float(np.percentile(arr_net, 50)), 2),
+                "p90": round(float(np.percentile(arr_net, 90)), 2),
+                "prob_positive": round(float(np.mean(arr_net > 0)), 4)
+            },
+            "mrr_12": {
+                "p10": round(float(np.percentile(arr_mrr, 10)), 2),
+                "p50": round(float(np.percentile(arr_mrr, 50)), 2),
+                "p90": round(float(np.percentile(arr_mrr, 90)), 2)
+            },
+            "runway_months_12": {
+                "p10": round(float(np.percentile(arr_runway, 10)), 1),
+                "p50": round(float(np.percentile(arr_runway, 50)), 1),
+                "p90": round(float(np.percentile(arr_runway, 90)), 1)
+            },
+            "p_feasible": round(p_feas, 4),
+            "p_best": round(p_bst, 4)
+        }
+        strategies_summary[s] = s_summary
+        quantiles_summary[s] = {
+            "net_contribution_12": s_summary["net_contribution_12"],
+            "mrr_12": s_summary["mrr_12"],
+            "runway_months_12": s_summary["runway_months_12"]
+        }
+        probabilities_summary[s] = {
+            "p_feasible": round(p_feas, 4),
+            "p_best": round(p_bst, 4)
+        }
+
+    target_strat = strategy if strategy in strategies_summary else "B_usage_caps"
+    target_summary = strategies_summary[target_strat]
+
+    result = dict(target_summary)
+    result["strategies"] = strategies_summary
+    result["quantiles"] = quantiles_summary
+    result["probabilities"] = probabilities_summary
+    return result
 
 
 def run_sensitivity_analysis(
@@ -300,9 +346,14 @@ def find_flip_point(
     threshold = round((left + right) / 2.0, 4)
     pct_str = f"{threshold * 100:.2f}%" if "conversion" in variable_name or "rate" in variable_name else f"{threshold:,.2f}"
 
+    if f_low < f_high:
+        direction_clause = f"drops below {pct_str}"
+    else:
+        direction_clause = f"rises above {pct_str}"
+
     statement = (
-        f"{strategy_a.replace('_', ' ')} outperforms {strategy_b.replace('_', ' ')} "
-        f"only if {variable_name.replace('_', ' ')} stays above {pct_str}."
+        f"If {variable_name.replace('_', ' ')} {direction_clause}, "
+        f"{strategy_a.replace('_', ' ')} is overtaken by {strategy_b.replace('_', ' ')}"
     )
 
     return {

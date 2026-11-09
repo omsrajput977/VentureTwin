@@ -5,11 +5,14 @@ on:
     branches: [main]
   pull_request:
     branches: [main]
+  workflow_dispatch:
 
 jobs:
   backend-test:
     name: Backend Tests (Python ${{ matrix.python-version }})
     runs-on: ubuntu-latest
+    env:
+      LLM_MODE: mock
     strategy:
       fail-fast: false
       matrix:
@@ -58,3 +61,4 @@ jobs:
       - name: Run Prebuild Number Audit and Vite Build
         working-directory: ui
         run: npm run build
+

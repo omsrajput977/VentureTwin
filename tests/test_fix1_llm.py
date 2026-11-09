@@ -74,3 +74,54 @@ async def test_agent_calls_llm_and_stub_reflects_in_finding():
 
     # Check that unmodeled metric was captured in state.ignored_assumptions
     assert "unmodeled_noise_metric" in state.ignored_assumptions
+
+def test_mock_handler_requires_agent_key():
+    from agents.mock_handlers import default_mock_handler
+    # Missing metadata or missing agent_key must raise KeyError
+    with pytest.raises(KeyError):
+        default_mock_handler("Prompt with no metadata", AgentFindingDraft, metadata=None)
+
+    with pytest.raises(KeyError):
+        default_mock_handler("Prompt with empty metadata", AgentFindingDraft, metadata={})
+
+def test_mock_handler_explicit_routing_and_distinct_outputs():
+    from agents.mock_handlers import default_mock_handler
+    cfo_draft = default_mock_handler("dummy", AgentFindingDraft, metadata={"agent_key": "cfo"})
+    growth_draft = default_mock_handler("dummy", AgentFindingDraft, metadata={"agent_key": "growth"})
+    cto_draft = default_mock_handler("dummy", AgentFindingDraft, metadata={"agent_key": "cto"})
+    customer_draft = default_mock_handler("dummy", AgentFindingDraft, metadata={"agent_key": "customer"})
+    product_draft = default_mock_handler("dummy", AgentFindingDraft, metadata={"agent_key": "product"})
+
+    # All must have distinct assumption sets
+    cfo_names = {a.name for a in cfo_draft.assumptions}
+    growth_names = {a.name for a in growth_draft.assumptions}
+    cto_names = {a.name for a in cto_draft.assumptions}
+    customer_names = {a.name for a in customer_draft.assumptions}
+    product_names = {a.name for a in product_draft.assumptions}
+
+    assert cfo_names == {"free_to_paid_conversion"}
+    assert growth_names == {"free_to_paid_conversion", "monthly_free_signups"}
+    assert cto_names == {"infra_cost_per_free_user", "usage_cap_infra_reduction"}
+    assert customer_names == {"paid_to_free_cannibalization", "usage_cap_cannibalization_reduction"}
+    assert product_names == {"activation_drop_from_gating", "cap_conversion_uplift"}
+
+    # Swapping agent_key swaps output
+    swap1 = default_mock_handler("dummy", AgentFindingDraft, metadata={"agent_key": "cto"})
+    assert {a.name for a in swap1.assumptions} == cto_names
+
+def test_mock_rebuttal_holds_position_defend():
+    from agents.mock_handlers import default_mock_handler
+    from state.schemas import Rebuttal
+    rebuttal = default_mock_handler("Critique on conversion", Rebuttal, metadata={"agent_key": "growth"})
+    assert rebuttal.stance == "defend"
+    assert rebuttal.updated_base is None
+
+def test_every_analysis_agent_prompt_contains_own_key():
+    from agents.specialists import CFOAgent, GrowthAgent, CTOAgent, CustomerAgent, ProductAgent
+    agents = [CFOAgent(), GrowthAgent(), CTOAgent(), CustomerAgent(), ProductAgent()]
+    for agent in agents:
+        prompt = agent.build_prompt({})
+        assert f"Agent Key: {agent.agent_key}" in prompt
+        assert agent.agent_key in ["cfo", "growth", "cto", "customer", "product"]
+
+

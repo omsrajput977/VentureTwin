@@ -28,3 +28,4 @@ def test_freemium_queries_remain_supported():
         assert d.type == "free_plan"
         dag = decompose_decision(d)
         assert dag.validate() is True
+
