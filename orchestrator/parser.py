@@ -51,7 +51,7 @@ def parse_decision_query(
             "limit", "feature", "usage", "hire", "spend", "sales", "marketing", "raise",
             "increase", "cut", "lower", "reduce", "optimize", "strategy", "decision"
         ]
-        is_strategic = any(term in q_lower for term in saas_decision_terms)
+        is_strategic = any(re.search(rf"\b{re.escape(term)}\b", q_lower) for term in saas_decision_terms)
         
         if not is_strategic:
             return Decision(
@@ -69,13 +69,18 @@ def parse_decision_query(
         if any(k in q_lower for k in ["free plan", "free tier", "freemium", "free user", "free account"]):
             dec_type = "free_plan"
             obj = f"Evaluate financial runway, acquisition velocity, infra strain, and cannibalization of launching a free tier."
-        elif any(k in q_lower for k in ["enterprise", "sla", "soc2", "dedicated"]):
+        elif any(re.search(rf"\b{re.escape(k)}\b", q_lower) for k in ["enterprise", "sla", "soc2", "dedicated"]):
             dec_type = "enterprise_tier"
             obj = f"Evaluate enterprise ACV uplift, dedicated SLA infrastructure costs, and customer success staffing for: {query}"
-        elif any(k in q_lower for k in ["churn", "retention", "cancel", "cs", "health score"]):
+        elif any(re.search(rf"\b{re.escape(k)}\b", q_lower) for k in ["churn", "retention", "cancel", "health score"]):
             dec_type = "churn_reduction"
             obj = f"Evaluate retention dynamics, support load, and customer lifetime value for: {query}"
-        elif any(k in q_lower for k in ["price", "pricing", "raise", "increase", "cut", "discount", "tier", "billing", "rate", "starter price"]):
+        elif any(re.search(pat, q_lower) for pat in [
+            r"\bprice\b", r"\bpricing\b", r"\braise\b", r"\bincrease\b",
+            r"\bcut\b", r"\bdiscount\b", r"\bbilling\b", r"\brate hike\b",
+            r"\bbilling rate\b", r"\bsubscription rate\b", r"\bstarter price\b",
+            r"\bprice increase\b", r"\bprice cut\b"
+        ]):
             dec_type = "price_increase"
             obj = f"Evaluate revenue elasticity, customer churn risk, and runway implications of: {query}"
         else:

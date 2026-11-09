@@ -131,6 +131,22 @@ def run_saas_dynamics(
         cost_per_free = 0.0
         free_ticket_rate = 0.0
         paid_acquisition_lift = 1.02
+    elif "adopt_proposal" in strategy or "implement_proposal" in strategy:
+        free_signups_mo = 0.0
+        effective_signups = 0.0
+        conversion_rate = 0.0
+        cannibalization_rate = 0.0
+        cost_per_free = 0.0
+        free_ticket_rate = 0.0
+        paid_acquisition_lift = 0.98
+    elif "pilot" in strategy:
+        free_signups_mo = 0.0
+        effective_signups = 0.0
+        conversion_rate = 0.0
+        cannibalization_rate = 0.0
+        cost_per_free = 0.0
+        free_ticket_rate = 0.0
+        paid_acquisition_lift = 1.0
     elif "status_quo" in strategy:
         free_signups_mo = 0.0
         effective_signups = 0.0

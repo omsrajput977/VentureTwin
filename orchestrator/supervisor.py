@@ -545,6 +545,8 @@ class Supervisor:
             strategies = ["A_enterprise_dedicated_sla", "B_self_serve_pro_tier", "C_status_quo"]
         elif dec_type == "churn_reduction":
             strategies = ["A_proactive_csm_program", "B_automated_health_scoring", "C_status_quo"]
+        elif dec_type == "strategic_decision":
+            strategies = ["A_adopt_proposal", "B_targeted_pilot", "C_status_quo"]
         else:
             strategies = ["A_limited_features", "B_usage_caps", "C_no_free_plan"]
 
@@ -596,7 +598,8 @@ class Supervisor:
             flip_point_info=getattr(self, "flip_point_info", {"has_flip_point": False}),
             mc_summary=getattr(self, "mc_summary", None),
             degraded_agents=all_degraded,
-            company_data=company_data
+            company_data=company_data,
+            findings=state.findings
         )
         state.draft_report = draft_report
         state.report = draft_report
@@ -676,7 +679,8 @@ class Supervisor:
             flip_point_info=getattr(self, "flip_point_info", {"has_flip_point": False}),
             mc_summary=getattr(self, "mc_summary", None),
             degraded_agents=all_degraded,
-            company_data=company_data
+            company_data=company_data,
+            findings=state.findings
         )
 
         all_passed = all(r.status == "passed" for r in state.verification_results)

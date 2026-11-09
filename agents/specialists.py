@@ -162,6 +162,15 @@ class BaseAnalysisAgent(BaseAgent):
             f"Objective: {self.objective}\n\n"
             f"Strategic Decision Question: {decision_q}\n"
             f"Tool Data:\n{json.dumps(tool_data, indent=2)}\n\n"
+            "CRITICAL RULES ON QUESTION ENTITY & RECOMMENDATION INTEGRITY:\n"
+            "1. ENTITY ACCURACY: Read the Strategic Decision Question literally and pay strict attention to who or what is being changed:\n"
+            "   - If the user asks about changing their personal name ('my name', 'change my name to...'), personal lifestyle, or founder individual identity, "
+            "do NOT hallucinate that the company name is changing or that NimbusDesk is being rebranded. Address the founder's personal question directly.\n"
+            "   - Clearly state that changing an individual's personal name has zero operational, financial, technical, or growth correlation with NimbusDesk's business metrics.\n"
+            "2. RECOMMENDATION INTEGRITY:\n"
+            "   - If you determine that the proposal is irrelevant, non-operational, or has no valid business connection to company strategy, you MUST recommend 'reject'.\n"
+            "   - NEVER recommend 'proceed' or 'proceed_with_limits' if your claim states the idea is irrelevant or outside strategic scope.\n"
+            "   - If rejecting an irrelevant or non-operational proposal, do not fabricate unrelated business assumptions (leave assumptions empty or propose conservative baseline parameters).\n\n"
             f"Allowed Simulator Parameters (Table):\n{sim_table}\n\n"
             "RULES FOR ASSUMPTIONS:\n"
             "- Propose ONLY parameter names from the table above.\n"
@@ -274,12 +283,13 @@ class CFOAgent(BaseAnalysisAgent):
             objective="Protect runway and gross margins; prevent unmonetized cost explosions",
             agent_key="cfo",
             system_prompt=(
-                "You are the CFO. Your duty is to protect company runway and margins. "
+                "You are the CFO of NimbusDesk. Your duty is to protect company runway and margins. "
+                "Maintain entity accuracy: do not confuse a founder's personal name or individual actions with corporate rebranding or company name changes. "
                 "Propose assumption ranges for financial levers; never generate final outcome numbers. "
                 "Every claim must cite a tool data field."
             ),
             tools={"lookup_financials": lookup_financials},
-            prompt_guidance="Focus on runway protection, cash burn, and conversion conservation."
+            prompt_guidance="Focus on runway protection, cash burn, and conversion conservation. Distinguish personal actions from corporate finance."
         )
 
 
@@ -291,11 +301,12 @@ class GrowthAgent(BaseAnalysisAgent):
             objective="Maximize top-of-funnel acquisition, organic user growth, and conversion volume",
             agent_key="growth",
             system_prompt=(
-                "You are the VP of Growth. Scale customer acquisition and build self-serve viral flywheels. "
+                "You are the VP of Growth for NimbusDesk. Scale customer acquisition and build self-serve viral flywheels. "
+                "Maintain entity accuracy: do not confuse a founder's personal name with company rebranding or changing the company name. "
                 "Propose assumption ranges; never fabricate outcomes."
             ),
             tools={"lookup_funnel": lookup_funnel},
-            prompt_guidance="Focus on top-of-funnel organic traffic, trial conversions, and signup velocity."
+            prompt_guidance="Focus on top-of-funnel organic traffic, trial conversions, and signup velocity. Do not treat personal naming queries as company rebranding."
         )
 
 
@@ -339,11 +350,12 @@ class ProductAgent(BaseAnalysisAgent):
             objective="Optimize feature gating, drive activation-to-paid conversion triggers, ensure upgrade friction is healthy",
             agent_key="product",
             system_prompt=(
-                "You are the VP of Product. Design tier boundaries and feature gates that encourage "
-                "users to upgrade naturally when they hit productivity ceilings."
+                "You are the VP of Product for NimbusDesk. Design tier boundaries and feature gates that encourage "
+                "users to upgrade naturally when they hit productivity ceilings. "
+                "If a question is irrelevant to product packaging or company strategy, recommend 'reject'."
             ),
             tools={"lookup_customers": lookup_customers},
-            prompt_guidance="Focus on gating friction and usage limits."
+            prompt_guidance="Focus on gating friction and usage limits. If an idea has no bearing on product strategy, recommend reject."
         )
 
 

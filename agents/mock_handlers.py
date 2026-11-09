@@ -97,6 +97,53 @@ def _generate_finding_draft(
     starter_count = starter_plan.get("count", 450) if starter_plan else 450
 
     # =========================================================================
+    # DOMAIN 0: STRATEGIC PROPOSAL / PERSONAL QUESTIONS (e.g. "Should I change my name to habibi for company strategy?")
+    # =========================================================================
+    if dec_type == "strategic_decision" and not any(k in q_str for k in ["free plan", "free tier", "freemium", "price", "enterprise", "churn"]):
+        is_personal = any(k in q_str for k in ["my name", "name to", "habibi", "personal", "founder"])
+        if is_personal:
+            if agent_key == "cfo":
+                claim = (
+                    f"Changing your personal name has zero correlation with cash reserves (${cash:,.0f}) or our {runway:.1f}-month runway. "
+                    "NimbusDesk requires focus on capital efficiency; personal naming actions are outside corporate operations."
+                )
+            elif agent_key == "growth":
+                claim = (
+                    f"A personal name change does not create an organic growth flywheel or accelerate acquisition beyond our current {visitors:,} monthly visitors. "
+                    "Growth recommends rejecting personal naming proposals as a company strategy."
+                )
+            elif agent_key == "cto":
+                claim = (
+                    f"Changing your personal name has zero technical impact on cloud infrastructure (${cloud_cost:,.2f}/mo) or platform uptime. "
+                    "CTO recommends rejecting non-technical distractions."
+                )
+            elif agent_key == "customer":
+                claim = (
+                    f"Customer satisfaction across our {paying} paying accounts depends on software reliability and support response, not personal naming changes. "
+                    "Customer team recommends rejecting."
+                )
+            else:  # product
+                claim = (
+                    "Personal founder name changes have zero bearing on product packaging, roadmap features, or core tier gates. "
+                    "Product team recommends rejecting."
+                )
+
+            return AgentFindingDraft(
+                claim=claim,
+                recommendation="reject",
+                assumptions=[],
+                evidence=[
+                    Evidence(
+                        source_type="company_data",
+                        source_ref="financials.cash_balance",
+                        snippet=f"Baseline cash: ${cash:,.2f}, runway: {runway:.1f} months, paying accounts: {paying}."
+                    )
+                ],
+                limitations=["Personal founder decisions have no operational telemetry."],
+                confidence=0.95
+            )
+
+    # =========================================================================
     # DOMAIN 1: PRICE INCREASE (e.g. "Should we raise Starter price by 20%?")
     # =========================================================================
     if is_price_increase and not (is_enterprise or is_churn or "free" in q_str):

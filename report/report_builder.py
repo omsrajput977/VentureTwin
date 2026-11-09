@@ -23,7 +23,8 @@ def build_consolidated_report(
     flip_point_info: Dict[str, Any],
     mc_summary: Optional[Dict[str, Any]] = None,
     degraded_agents: Optional[List[str]] = None,
-    company_data: Optional[Dict[str, Any]] = None
+    company_data: Optional[Dict[str, Any]] = None,
+    findings: Optional[List[Finding]] = None
 ) -> Report:
     data = company_data or load_company_data()
     model_cfg = load_model_config()
@@ -37,6 +38,47 @@ def build_consolidated_report(
     )
 
     min_runway_constraint = float(decision.constraints.get('min_runway_months', 10.0)) if decision.constraints else 10.0
+    
+    # Assess specialist agent consensus
+    findings_list = findings or []
+    reject_findings = [f for f in findings_list if f.recommendation == "reject"]
+    proceed_findings = [f for f in findings_list if f.recommendation in ["proceed", "proceed_with_limits"]]
+    is_rejected_by_agents = len(reject_findings) > len(proceed_findings) and len(reject_findings) >= 2
+
+    if is_rejected_by_agents:
+        # Re-rank so status quo is rank 1
+        sq_strat = next((s for s in ranked if "status_quo" in s.strategy.lower() or "no_free_plan" in s.strategy.lower()), None)
+        if sq_strat:
+            other_strats = [s for s in ranked if s.strategy != sq_strat.strategy]
+            new_ranked = [
+                RankedStrategy(
+                    strategy=sq_strat.strategy,
+                    rank=1,
+                    net_contribution_12=sq_strat.net_contribution_12,
+                    runway_months_12=sq_strat.runway_months_12,
+                    mrr_12=sq_strat.mrr_12,
+                    gross_margin_12=sq_strat.gross_margin_12,
+                    is_feasible=True,
+                    feasibility_reason=f"Recommended: Status Quo maintains operational baseline; proposal '{decision.question}' rejected by executive consensus.",
+                    min_runway_months=sq_strat.min_runway_months
+                )
+            ]
+            for idx, s in enumerate(other_strats, start=2):
+                new_ranked.append(
+                    RankedStrategy(
+                        strategy=s.strategy,
+                        rank=idx,
+                        net_contribution_12=s.net_contribution_12,
+                        runway_months_12=s.runway_months_12,
+                        mrr_12=s.mrr_12,
+                        gross_margin_12=s.gross_margin_12,
+                        is_feasible=False,
+                        feasibility_reason=f"Rejected: Specialist agents advise against executing this initiative.",
+                        min_runway_months=s.min_runway_months
+                    )
+                )
+            ranked = new_ranked
+
     feasible_strategies = [s for s in ranked if s.is_feasible]
     top_strategy = feasible_strategies[0] if feasible_strategies else (ranked[0] if ranked else None)
     top_name = top_strategy.strategy if top_strategy else "None"
@@ -44,7 +86,23 @@ def build_consolidated_report(
 
     flip_thresh_str = f"{flip_point_info.get('threshold', 0.0) * 100:.2f}%" if flip_point_info.get('has_flip_point') else "N/A"
 
-    if top_strategy and top_strategy.is_feasible:
+    if is_rejected_by_agents:
+        rec_title = "Reject: Do not proceed with proposal"
+        agent_points = []
+        for f in reject_findings[:3]:
+            clean_claim = f.claim.strip().rstrip(".")
+            agent_points.append(f"{f.agent}: {clean_claim}")
+        claims_prose = "; ".join(agent_points)
+
+        exec_summary = (
+            f"Recommendation: {rec_title} (Confidence: {conf_assessment.level}). "
+            f"Executive analysis across {len(reject_findings)} specialist agents advises rejecting the proposed initiative "
+            f"('{decision.question}'). Key agent findings: {claims_prose}. "
+            f"Financial simulations confirm that maintaining the baseline Status Quo preserves {top_strategy.runway_months_12:.1f} months of cash runway "
+            f"(minimum safety threshold: {min_runway_constraint:.1f} mo) and ${top_strategy.net_contribution_12:,.2f} in cumulative 12-month net contribution "
+            f"without taking on unvalidated strategic, brand, or operational disruption."
+        )
+    elif top_strategy and top_strategy.is_feasible:
         rec_title = f"Proceed with {top_name_pretty}"
         exec_summary = (
             f"Recommendation: {rec_title} (Confidence: {conf_assessment.level}). "
@@ -260,33 +318,71 @@ def build_consolidated_report(
     # 9. Assumption Ledger
     ledger = [asm.model_dump() for asm in assumptions]
 
-    # 10. Risks & Execution Plan
-    risks_and_triggers = [
-        {
-            "risk": "Conversion degradation below threshold",
-            "trigger": f"Free-to-paid conversion dips below {flip_thresh_str}",
-            "mitigation": "Immediately tighten feature gates or reduce self-serve free limits."
-        },
-        {
-            "risk": "Runway compression below safety floor",
-            "trigger": f"Runway falls below {min_runway_constraint:.1f} months",
-            "mitigation": "Pause free tier new onboarding; migrate high-usage free users to paid Starter."
-        }
-    ]
+    # Register any numbers extracted from executive_summary narrative
+    if exec_summary:
+        for m in conf_num_pattern.finditer(exec_summary):
+            raw_num = m.group(2).replace(",", "")
+            try:
+                num_val = float(raw_num)
+                reg.register_source(
+                    value=num_val,
+                    path="sections.executive_summary.prose",
+                    source_ref=f"exec_summary:prose_{num_val}"
+                )
+            except ValueError:
+                pass
 
-    # Grounded execution plan phases and gates
-    execution_plan = [
-        {
-            "phase": "Phase 1: Gated Beta Rollout (Months 1-3)",
-            "gate": f"Conversion >= {flip_thresh_str} and Runway >= {min_runway_constraint:.1f} mo",
-            "action": "Enable self-serve signups with strict product limits and monitor support load."
-        },
-        {
-            "phase": "Phase 2: Full Distribution Scale (Months 4-12)",
-            "gate": f"Gross margin >= 70% and Runway >= {min_runway_constraint:.1f} mo",
-            "action": "Accelerate in-app upgrade triggers and expand self-serve marketing funnels."
-        }
-    ]
+    # 10. Risks & Execution Plan
+    if is_rejected_by_agents:
+        risks_and_triggers = [
+            {
+                "risk": "Operational distraction from unvetted proposals",
+                "trigger": "Pursuing non-core or rejected strategic initiatives",
+                "mitigation": "Enforce strict executive governance; refocus roadmap on validated core growth levers."
+            },
+            {
+                "risk": "Runway compression below safety floor",
+                "trigger": f"Runway falls below {min_runway_constraint:.1f} months",
+                "mitigation": "Maintain baseline operations; do not allocate resources to unvalidated initiatives."
+            }
+        ]
+        execution_plan = [
+            {
+                "phase": "Phase 1: Rejection & Operational Guardrails (Immediate)",
+                "gate": f"Runway >= {min_runway_constraint:.1f} mo",
+                "action": f"Formalize executive rejection of '{decision.question}'. Reaffirm company focus on core business operations."
+            },
+            {
+                "phase": "Phase 2: Baseline Roadmap Execution (Months 1-12)",
+                "gate": f"Gross margin >= 70% and Runway >= {min_runway_constraint:.1f} mo",
+                "action": "Maintain existing product and pricing model while monitoring customer retention and unit economics."
+            }
+        ]
+    else:
+        risks_and_triggers = [
+            {
+                "risk": "Conversion degradation below threshold",
+                "trigger": f"Free-to-paid conversion dips below {flip_thresh_str}",
+                "mitigation": "Immediately tighten feature gates or reduce self-serve free limits."
+            },
+            {
+                "risk": "Runway compression below safety floor",
+                "trigger": f"Runway falls below {min_runway_constraint:.1f} months",
+                "mitigation": "Pause free tier new onboarding; migrate high-usage free users to paid Starter."
+            }
+        ]
+        execution_plan = [
+            {
+                "phase": "Phase 1: Gated Beta Rollout (Months 1-3)",
+                "gate": f"Conversion >= {flip_thresh_str} and Runway >= {min_runway_constraint:.1f} mo",
+                "action": "Enable self-serve signups with strict product limits and monitor support load."
+            },
+            {
+                "phase": "Phase 2: Full Distribution Scale (Months 4-12)",
+                "gate": f"Gross margin >= 70% and Runway >= {min_runway_constraint:.1f} mo",
+                "action": "Accelerate in-app upgrade triggers and expand self-serve marketing funnels."
+            }
+        ]
 
     # Register execution plan thresholds
     reg.register_source(value=min_runway_constraint, path="sections.execution_plan.min_runway_months", source_ref="company:financials.target_min_runway_months")
@@ -331,6 +427,17 @@ def build_consolidated_report(
         "outcome_ranges": mc_summary.get("quantiles", {}) if mc_summary else {},
         "verification_summary": verif_summary,
         "monte_carlo": mc_summary or {},
+        "agent_findings": [
+            {
+                "agent": f.agent,
+                "claim": f.claim,
+                "recommendation": f.recommendation,
+                "confidence": f.confidence,
+                "limitations": f.limitations,
+                "status": f.status
+            }
+            for f in findings_list
+        ],
         "number_registry": reg.to_dict()
     }
 

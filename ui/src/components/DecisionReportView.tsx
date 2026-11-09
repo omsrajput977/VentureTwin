@@ -40,6 +40,7 @@ export const DecisionReportView: React.FC<Props> = ({ report, decisionId, onAppr
   const verifs = sec.verification_summary || [];
   const risks = sec.risks_and_triggers || [];
   const conf = sec.confidence_assessment || { level: report.confidence, score: undefined, reasons: [] };
+  const agentFindings = sec.agent_findings || [];
 
   return (
     <div className="space-y-6">
@@ -78,6 +79,52 @@ export const DecisionReportView: React.FC<Props> = ({ report, decisionId, onAppr
           </div>
         )}
       </div>
+
+      {/* 1.5. Executive Agent Claims & Specialist Synthesis */}
+      {agentFindings.length > 0 && (
+        <div className="bg-slate-900/90 border border-slate-800 rounded-2xl p-6 shadow-xl">
+          <div className="flex items-center justify-between mb-4">
+            <div>
+              <h3 className="text-lg font-bold text-white mb-1">Executive Specialist Claims & Alignment</h3>
+              <p className="text-xs text-slate-400">Direct inputs and strategic claims from autonomous functional agents</p>
+            </div>
+            <span className="text-xs font-mono text-slate-500">{agentFindings.length} Agents Evaluated</span>
+          </div>
+
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+            {agentFindings.map((f: any, idx: number) => {
+              const isReject = f.recommendation === 'reject';
+              const isProceed = f.recommendation === 'proceed';
+              const badgeClass = isReject
+                ? 'bg-rose-500/20 text-rose-400 border-rose-500/30'
+                : isProceed
+                ? 'bg-emerald-500/20 text-emerald-400 border-emerald-500/30'
+                : 'bg-sky-500/20 text-sky-400 border-sky-500/30';
+
+              return (
+                <div key={idx} className="bg-slate-950/70 border border-slate-800/80 rounded-xl p-4 flex flex-col justify-between">
+                  <div>
+                    <div className="flex items-center justify-between mb-2 pb-2 border-b border-slate-800/60">
+                      <span className="font-bold text-sm text-white tracking-wide">{f.agent}</span>
+                      <div className="flex items-center gap-2">
+                        <span className={`text-[10px] px-2 py-0.5 rounded-full font-semibold border ${badgeClass} uppercase`}>
+                          {String(f.recommendation || 'unknown').replace(/_/g, ' ')}
+                        </span>
+                        <span className="text-[11px] font-mono text-slate-400">
+                          {typeof f.confidence === 'number' ? `${(f.confidence * 100).toFixed(0)}% conf` : ''}
+                        </span>
+                      </div>
+                    </div>
+                    <p className="text-xs text-slate-300 leading-relaxed italic">
+                      "{f.claim}"
+                    </p>
+                  </div>
+                </div>
+              );
+            })}
+          </div>
+        </div>
+      )}
 
       {/* 2. Strategies Compared */}
       <div className="bg-slate-900/90 border border-slate-800 rounded-2xl p-6 shadow-xl">

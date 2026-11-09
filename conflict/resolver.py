@@ -176,6 +176,8 @@ def resolve_conflict_via_simulation(
             strategies = ["A_enterprise_dedicated_sla", "B_self_serve_pro_tier", "C_status_quo"]
         elif dec_type == "churn_reduction":
             strategies = ["A_proactive_csm_program", "B_automated_health_scoring", "C_status_quo"]
+        elif dec_type == "strategic_decision":
+            strategies = ["A_adopt_proposal", "B_targeted_pilot", "C_status_quo"]
         else:
             strategies = ["A_limited_features", "B_usage_caps", "C_no_free_plan"]
 
@@ -213,6 +215,20 @@ def resolve_conflict_via_simulation(
             strat_c: 0.0
         }
         conflict.isolated_simulation_deltas = deltas
+
+        reject_count = sum(1 for f in findings if f.recommendation == "reject")
+        proceed_count = sum(1 for f in findings if f.recommendation in ["proceed", "proceed_with_limits"])
+
+        if reject_count > proceed_count:
+            conflict.status = "resolved"
+            conflict.unresolved = False
+            conflict.verdict = f"Specialist consensus ({reject_count} of {len(findings)} agents) and simulation confirm status quo ({strat_c}) is optimal; proposal rejected."
+            conflict.resolution = (
+                f"Resolved by simulation and executive consensus: Reject recommendation upheld. Maintaining Status Quo ({strat_c}) "
+                f"preserves ${res_c['net_contribution_12']:,.2f} in 12-month net contribution with {res_c['runway_months_12']:.1f} months runway >= {min_runway:.1f}mo floor. "
+                "Isolated proceed recommendation is unsupported by operating fundamentals."
+            )
+            return conflict
 
         # Check if feasible strategy exists with net contribution > status quo C
         feasible_outperformers = [
