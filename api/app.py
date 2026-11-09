@@ -190,9 +190,12 @@ async def get_decision_status(decision_id: str):
     state = active_workflows.get(decision_id)
     if not state:
         supervisor = active_supervisors.get(decision_id)
-        if supervisor:
+        if supervisor and getattr(supervisor, "current_state", None):
+            state = supervisor.current_state
+        elif supervisor:
             return {"decision_id": decision_id, "status": "running"}
-        raise HTTPException(status_code=404, detail="Decision not found")
+        else:
+            raise HTTPException(status_code=404, detail="Decision not found")
 
     return {
         "decision_id": decision_id,
@@ -256,11 +259,29 @@ async def get_decision_report(decision_id: str):
     """Returns the consolidated 10-section decision report."""
     state = active_workflows.get(decision_id)
     if not state:
+        supervisor = active_supervisors.get(decision_id)
+        if supervisor and getattr(supervisor, "current_state", None):
+            state = supervisor.current_state
+    if not state:
         raise HTTPException(status_code=404, detail="Decision not found or still processing")
     if not state.report:
         raise HTTPException(status_code=400, detail="Report generation not yet completed")
 
     return state.report.model_dump()
+
+@app.get("/api/reports/latest")
+async def get_latest_report():
+    """Returns the most recent completed decision report."""
+    for w in reversed(list(active_workflows.values())):
+        if w.report:
+            return w.report.model_dump()
+    kg_path = os.path.join(os.path.dirname(__file__), "..", "data", "known_good_run.json")
+    if os.path.exists(kg_path):
+        with open(kg_path, "r", encoding="utf-8") as f:
+            data = json.load(f)
+            if "report" in data and data["report"]:
+                return data["report"]
+    raise HTTPException(status_code=404, detail="No completed report found")
 
 @app.post("/api/decisions/{decision_id}/approve")
 async def approve_decision(decision_id: str, req: ApprovalRequest):

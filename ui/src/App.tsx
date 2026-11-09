@@ -143,7 +143,24 @@ export const App: React.FC = () => {
               Decision Console
             </button>
             <button
-              onClick={() => setActiveTab('report')}
+              onClick={async () => {
+                setActiveTab('report');
+                if (!report) {
+                  try {
+                    let rep = null;
+                    if (currentDecisionId) {
+                      try { rep = await fetchDecisionReport(currentDecisionId); } catch {}
+                    }
+                    if (!rep) {
+                      const res = await fetch('/api/reports/latest');
+                      if (res.ok) rep = await res.json();
+                    }
+                    if (rep) setReport(rep);
+                  } catch (e) {
+                    console.warn('Report fetch notice:', e);
+                  }
+                }
+              }}
               className={`px-3 py-1.5 rounded-lg text-xs font-medium transition ${
                 activeTab === 'report' ? 'bg-brand-500 text-slate-950 font-bold shadow' : 'text-slate-400 hover:text-white'
               }`}

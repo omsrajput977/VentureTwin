@@ -1,4 +1,5 @@
 import os
+import json
 import asyncio
 import logging
 import time
@@ -56,6 +57,7 @@ class Supervisor:
         self.tornado_data: List[Dict[str, Any]] = []
         self.flip_point_info: Dict[str, Any] = {}
         self.mc_summary: Dict[str, Any] = {}
+        self.current_state: Optional[WorkflowState] = None
 
     def inject_failure(
         self,
@@ -109,6 +111,7 @@ class Supervisor:
             t.id for t in state.tasks.values() if t.status == "done"
         }
         active_ids: Set[str] = set()
+        self.current_state = state
 
         while not dag.is_complete(completed_ids):
             ready_tasks = dag.get_ready_tasks(completed_ids, active_ids)
