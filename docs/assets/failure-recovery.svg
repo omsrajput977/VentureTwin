@@ -1,0 +1,130 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 960 480" width="100%" height="100%">
+  <defs>
+    <style>
+      .bg { fill: #0b1020; }
+      .box { fill: #111827; stroke: #1e293b; stroke-width: 1.5; rx: 8px; }
+      .box-active { fill: #1e293b; stroke: #38bdf8; stroke-width: 1.5; rx: 8px; }
+      .box-warn { fill: #1e293b; stroke: #fbbf24; stroke-width: 1.5; rx: 8px; }
+      .box-err { fill: #1e293b; stroke: #f87171; stroke-width: 1.5; rx: 8px; }
+      .box-success { fill: #134e4a; fill-opacity: 0.3; stroke: #2dd4bf; stroke-width: 1.5; rx: 8px; }
+      .title { font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif; font-size: 20px; font-weight: 800; fill: #ffffff; }
+      .subtitle { font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif; font-size: 12px; fill: #94a3b8; }
+      .node-title { font-family: -apple-system, BlinkMacSystemFont, sans-serif; font-size: 12.5px; font-weight: 700; fill: #ffffff; }
+      .node-desc { font-family: ui-monospace, SFMono-Regular, monospace; font-size: 10px; fill: #94a3b8; }
+      .arrow { stroke: #475569; stroke-width: 1.5; fill: none; marker-end: url(#arr); }
+      .arrow-err { stroke: #f87171; stroke-width: 1.5; stroke-dasharray: 4,4; fill: none; marker-end: url(#arrErr); }
+      .arrow-succ { stroke: #2dd4bf; stroke-width: 1.5; fill: none; marker-end: url(#arrSucc); }
+    </style>
+    <marker id="arr" markerWidth="6" markerHeight="6" refX="5" refY="3" orient="auto">
+      <polygon points="0 0, 6 3, 0 6" fill="#475569" />
+    </marker>
+    <marker id="arrErr" markerWidth="6" markerHeight="6" refX="5" refY="3" orient="auto">
+      <polygon points="0 0, 6 3, 0 6" fill="#f87171" />
+    </marker>
+    <marker id="arrSucc" markerWidth="6" markerHeight="6" refX="5" refY="3" orient="auto">
+      <polygon points="0 0, 6 3, 0 6" fill="#2dd4bf" />
+    </marker>
+  </defs>
+
+  <rect width="960" height="480" rx="14" class="bg" stroke="#1e293b" stroke-width="1.5"/>
+
+  <!-- Header -->
+  <text x="36" y="38" class="title">Autonomous 3-Tier Fault Recovery &amp; Checkpointing</text>
+  <text x="36" y="58" class="subtitle">Self-healing orchestration: survives mid-run agent crashes, rate limits (429), and timeouts without data loss</text>
+
+  <!-- Top Pipeline: Specialist Agent Task Flow -->
+  <!-- 1. Task Dispatched -->
+  <g transform="translate(36, 95)">
+    <rect width="180" height="74" class="box-active"/>
+    <text x="14" y="24" class="node-title">Task Dispatched</text>
+    <text x="14" y="42" class="node-desc">orchestrator/supervisor</text>
+    <text x="14" y="58" class="node-desc" fill="#38bdf8">Attempt 1 / 3</text>
+  </g>
+
+  <!-- Transition 1 -> 2 (Failure) -->
+  <path d="M 216 132 L 260 132" class="arrow-err"/>
+  <text x="238" y="122" font-family="ui-monospace" font-size="9" fill="#f87171" text-anchor="middle">Crash / 429</text>
+
+  <!-- 2. Exponential Backoff -->
+  <g transform="translate(260, 95)">
+    <rect width="200" height="74" class="box-warn"/>
+    <text x="14" y="24" class="node-title" fill="#fbbf24">Tier 1: Retries &amp; Backoff</text>
+    <text x="14" y="42" class="node-desc">Attempts 2 &amp; 3</text>
+    <text x="14" y="58" class="node-desc" fill="#fde68a">Backoff: 2.0s → 4.0s</text>
+  </g>
+
+  <!-- Transition 2 -> 3 (3rd Failure) -->
+  <path d="M 460 132 L 504 132" class="arrow-err"/>
+  <text x="482" y="122" font-family="ui-monospace" font-size="9" fill="#f87171" text-anchor="middle">Exhausted</text>
+
+  <!-- 3. Backup Analyst -->
+  <g transform="translate(504, 95)">
+    <rect width="200" height="74" class="box-active" stroke="#c084fc"/>
+    <text x="14" y="24" class="node-title" fill="#c084fc">Tier 2: Backup Analyst</text>
+    <text x="14" y="42" class="node-desc">agents/backup_analyst.py</text>
+    <text x="14" y="58" class="node-desc" fill="#e9d5ff">Independent Prompt/Model</text>
+  </g>
+
+  <!-- Transition 3 -> 4 (Backup Fail) -->
+  <path d="M 704 132 L 748 132" class="arrow-err"/>
+  <text x="726" y="122" font-family="ui-monospace" font-size="9" fill="#f87171" text-anchor="middle">Failover Fail</text>
+
+  <!-- 4. Degraded Fallback -->
+  <g transform="translate(748, 95)">
+    <rect width="176" height="74" class="box-err"/>
+    <text x="14" y="24" class="node-title" fill="#f87171">Tier 3: Degraded</text>
+    <text x="14" y="42" class="node-desc">benchmarks.json</text>
+    <text x="14" y="58" class="node-desc" fill="#fca5a5">Deterministic Priors</text>
+  </g>
+
+  <!-- Success Path downwards from all tiers to Pipeline Resumption -->
+  <path d="M 126 169 L 126 230 L 440 230" class="arrow-succ"/>
+  <path d="M 360 169 L 360 230" class="arrow-succ"/>
+  <path d="M 604 169 L 604 230" class="arrow-succ"/>
+  <path d="M 836 169 L 836 230 L 640 230" class="arrow-succ"/>
+
+  <!-- Step: Pipeline Continues -->
+  <g transform="translate(340, 210)">
+    <rect width="280" height="42" class="box-success"/>
+    <text x="140" y="26" font-family="system-ui" font-size="12" font-weight="700" fill="#2dd4bf" text-anchor="middle">Task Completed → Event Broadcasted (SSE)</text>
+  </g>
+
+  <!-- Bottom Track: Critical Supervisor Task Failure & SQLite Checkpoint Resumption -->
+  <g transform="translate(36, 290)">
+    <rect width="888" height="150" rx="10" fill="#111827" stroke="#334155" stroke-dasharray="2,2"/>
+    <text x="20" y="28" font-family="ui-monospace, monospace" font-size="11" font-weight="700" fill="#a78bfa" letter-spacing="1px">CRITICAL SUPERVISOR TASK FAILURE (FAIL-FAST &amp; RESUME)</text>
+
+    <!-- Substep 1 -->
+    <g transform="translate(20, 46)">
+      <rect width="240" height="78" rx="6" fill="#1e293b" stroke="#f87171"/>
+      <text x="14" y="22" class="node-title" fill="#f87171">Supervisor Task Fails</text>
+      <text x="14" y="38" class="node-desc">Simulation / Conflict / Report</text>
+      <text x="14" y="54" class="node-desc" fill="#fca5a5">Zero silent suppression</text>
+      <text x="14" y="68" class="node-desc">Status: WORKFLOW_FAILED</text>
+    </g>
+
+    <!-- Arrow -->
+    <line x1="260" y1="85" x2="310" y2="85" class="arrow"/>
+
+    <!-- Substep 2 -->
+    <g transform="translate(310, 46)">
+      <rect width="260" height="78" rx="6" fill="#1e293b" stroke="#8b5cf6"/>
+      <text x="14" y="22" class="node-title" fill="#c084fc">SQLite Checkpoint Saved</text>
+      <text x="14" y="38" class="node-desc">state/checkpoints.py</text>
+      <text x="14" y="54" class="node-desc" fill="#e9d5ff">Preserves all completed nodes,</text>
+      <text x="14" y="68" class="node-desc">assumptions, and run state</text>
+    </g>
+
+    <!-- Arrow -->
+    <line x1="570" y1="85" x2="620" y2="85" class="arrow-succ"/>
+
+    <!-- Substep 3 -->
+    <g transform="translate(620, 46)">
+      <rect width="248" height="78" rx="6" fill="#134e4a" fill-opacity="0.4" stroke="#2dd4bf"/>
+      <text x="14" y="22" class="node-title" fill="#2dd4bf">Resume from Checkpoint</text>
+      <text x="14" y="38" class="node-desc">POST /api/decisions/{id}/resume</text>
+      <text x="14" y="54" class="node-desc" fill="#5eead4">Replays completed DAG waves;</text>
+      <text x="14" y="68" class="node-desc">re-executes only failed nodes</text>
+    </g>
+  </g>
+</svg>

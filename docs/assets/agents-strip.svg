@@ -1,0 +1,137 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1200 240" width="100%" height="100%">
+  <defs>
+    <style>
+      .card-bg { fill: #111827; stroke: #1e293b; stroke-width: 1.5; rx: 10px; }
+      .role-title { font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif; font-size: 13px; font-weight: 700; fill: #ffffff; text-anchor: middle; }
+      .role-obj { font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif; font-size: 10px; fill: #94a3b8; text-anchor: middle; }
+      .role-param { font-family: ui-monospace, monospace; font-size: 8.5px; fill: #64748b; text-anchor: middle; }
+      .icon-circle { stroke-width: 2; fill: #1e293b; }
+    </style>
+  </defs>
+
+  <!-- Frame Background -->
+  <rect width="1200" height="240" rx="14" fill="#0b1020" stroke="#1e293b" stroke-width="1.5"/>
+  <text x="24" y="28" fill="#f8fafc" font-family="-apple-system, BlinkMacSystemFont, sans-serif" font-size="14" font-weight="700">Specialist Agent Roster</text>
+  <text x="24" y="44" fill="#64748b" font-family="-apple-system, BlinkMacSystemFont, sans-serif" font-size="11">Specialized objective functions proposing assumptions with provenance and confidence</text>
+
+  <!-- 8 Agent Cards -->
+  <g transform="translate(16, 60)">
+    <!-- 1. Supervisor -->
+    <g transform="translate(0, 0)">
+      <rect width="138" height="160" class="card-bg" stroke="#8b5cf6"/>
+      <circle cx="69" cy="38" r="20" class="icon-circle" stroke="#a78bfa"/>
+      <!-- Compass / Master icon -->
+      <polygon points="69,24 74,38 69,52 64,38" fill="#a78bfa"/>
+      <text x="69" y="78" class="role-title">Supervisor</text>
+      <text x="69" y="96" class="role-obj">Task DAG Engine</text>
+      <text x="69" y="110" class="role-obj">Dispatches &amp; Synthesizes</text>
+      <line x1="16" y1="120" x2="122" y2="120" stroke="#1e293b" stroke-width="1"/>
+      <text x="69" y="136" class="role-param">orchestrator/</text>
+      <text x="69" y="148" class="role-param">supervisor.py</text>
+    </g>
+
+    <!-- 2. CFO -->
+    <g transform="translate(148, 0)">
+      <rect width="138" height="160" class="card-bg" stroke="#38bdf8"/>
+      <circle cx="69" cy="38" r="20" class="icon-circle" stroke="#38bdf8"/>
+      <!-- Dollar sign / Balance -->
+      <text x="69" y="44" font-family="ui-monospace" font-size="16" font-weight="800" fill="#38bdf8" text-anchor="middle">$</text>
+      <text x="69" y="78" class="role-title">CFO</text>
+      <text x="69" y="96" class="role-obj">Solvency &amp; Runway</text>
+      <text x="69" y="110" class="role-obj">Protect Cash Reserves</text>
+      <line x1="16" y1="120" x2="122" y2="120" stroke="#1e293b" stroke-width="1"/>
+      <text x="69" y="136" class="role-param">free_to_paid_conv</text>
+      <text x="69" y="148" class="role-param">infra_cost_per_user</text>
+    </g>
+
+    <!-- 3. Growth -->
+    <g transform="translate(296, 0)">
+      <rect width="138" height="160" class="card-bg" stroke="#34d399"/>
+      <circle cx="69" cy="38" r="20" class="icon-circle" stroke="#34d399"/>
+      <!-- Growth Arrow -->
+      <polyline points="59,44 65,34 71,38 79,28" fill="none" stroke="#34d399" stroke-width="2.5" stroke-linecap="round"/>
+      <polyline points="73,28 79,28 79,34" fill="none" stroke="#34d399" stroke-width="2.5" stroke-linecap="round"/>
+      <text x="69" y="78" class="role-title">Growth</text>
+      <text x="69" y="96" class="role-obj">Top-of-Funnel</text>
+      <text x="69" y="110" class="role-obj">Maximize Acquisition</text>
+      <line x1="16" y1="120" x2="122" y2="120" stroke="#1e293b" stroke-width="1"/>
+      <text x="69" y="136" class="role-param">monthly_signups</text>
+      <text x="69" y="148" class="role-param">paid_funnel_lift</text>
+    </g>
+
+    <!-- 4. CTO -->
+    <g transform="translate(444, 0)">
+      <rect width="138" height="160" class="card-bg" stroke="#fbbf24"/>
+      <circle cx="69" cy="38" r="20" class="icon-circle" stroke="#fbbf24"/>
+      <!-- Server / Cloud Icon -->
+      <rect x="60" y="30" width="18" height="6" rx="1.5" fill="#fbbf24"/>
+      <rect x="60" y="38" width="18" height="6" rx="1.5" fill="#fbbf24"/>
+      <circle cx="63" cy="33" r="1" fill="#1e293b"/>
+      <circle cx="63" cy="41" r="1" fill="#1e293b"/>
+      <text x="69" y="78" class="role-title">CTO</text>
+      <text x="69" y="96" class="role-obj">Infrastructure SLA</text>
+      <text x="69" y="110" class="role-obj">Usage Caps &amp; Scaling</text>
+      <line x1="16" y1="120" x2="122" y2="120" stroke="#1e293b" stroke-width="1"/>
+      <text x="69" y="136" class="role-param">infra_cost_per_user</text>
+      <text x="69" y="148" class="role-param">usage_cap_reduction</text>
+    </g>
+
+    <!-- 5. Customer -->
+    <g transform="translate(592, 0)">
+      <rect width="138" height="160" class="card-bg" stroke="#2dd4bf"/>
+      <circle cx="69" cy="38" r="20" class="icon-circle" stroke="#2dd4bf"/>
+      <!-- Support / Heart Icon -->
+      <path d="M 69 46 Q 63 38 60 34 A 4 4 0 0 1 66 29 Q 69 32 69 32 Q 69 32 72 29 A 4 4 0 0 1 78 34 Q 75 38 69 46 Z" fill="#2dd4bf"/>
+      <text x="69" y="78" class="role-title">Customer</text>
+      <text x="69" y="96" class="role-obj">CSAT &amp; Support Load</text>
+      <text x="69" y="110" class="role-obj">Prevent Churn</text>
+      <line x1="16" y1="120" x2="122" y2="120" stroke="#1e293b" stroke-width="1"/>
+      <text x="69" y="136" class="role-param">cannibalization</text>
+      <text x="69" y="148" class="role-param">free_ticket_rate</text>
+    </g>
+
+    <!-- 6. Product -->
+    <g transform="translate(740, 0)">
+      <rect width="138" height="160" class="card-bg" stroke="#818cf8"/>
+      <circle cx="69" cy="38" r="20" class="icon-circle" stroke="#818cf8"/>
+      <!-- Feature Cube Icon -->
+      <polygon points="69,28 77,32 69,37 61,32" fill="#818cf8"/>
+      <polygon points="61,33 69,38 69,47 61,42" fill="#6366f1"/>
+      <polygon points="77,33 69,38 69,47 77,42" fill="#4f46e5"/>
+      <text x="69" y="78" class="role-title">Product</text>
+      <text x="69" y="96" class="role-obj">Feature Gating</text>
+      <text x="69" y="110" class="role-obj">Upgrade Catalysts</text>
+      <line x1="16" y1="120" x2="122" y2="120" stroke="#1e293b" stroke-width="1"/>
+      <text x="69" y="136" class="role-param">activation_drop</text>
+      <text x="69" y="148" class="role-param">cap_conv_uplift</text>
+    </g>
+
+    <!-- 7. Skeptic -->
+    <g transform="translate(888, 0)">
+      <rect width="138" height="160" class="card-bg" stroke="#f87171"/>
+      <circle cx="69" cy="38" r="20" class="icon-circle" stroke="#f87171"/>
+      <!-- Shield / Eye Icon -->
+      <path d="M 69 28 L 78 31 L 78 39 C 78 44 69 49 69 49 C 69 49 60 44 60 39 L 60 31 Z" fill="none" stroke="#f87171" stroke-width="2"/>
+      <text x="69" y="78" class="role-title">Skeptic</text>
+      <text x="69" y="96" class="role-obj">Adversarial Audit</text>
+      <text x="69" y="110" class="role-obj">Challenges Assumptions</text>
+      <line x1="16" y1="120" x2="122" y2="120" stroke="#1e293b" stroke-width="1"/>
+      <text x="69" y="136" class="role-param">Provenance Check</text>
+      <text x="69" y="148" class="role-param">Loopback Rejection</text>
+    </g>
+
+    <!-- 8. Backup Analyst -->
+    <g transform="translate(1036, 0)">
+      <rect width="134" height="160" class="card-bg" stroke="#64748b" stroke-dasharray="4,4"/>
+      <circle cx="67" cy="38" r="20" class="icon-circle" stroke="#94a3b8"/>
+      <!-- Lifebuoy / Emergency icon -->
+      <circle cx="67" cy="38" r="8" fill="none" stroke="#94a3b8" stroke-width="2"/>
+      <text x="67" y="78" class="role-title" fill="#cbd5e1">Backup Analyst</text>
+      <text x="67" y="96" class="role-obj">Resilience Failover</text>
+      <text x="67" y="110" class="role-obj">Recovers Crashed Tasks</text>
+      <line x1="16" y1="120" x2="118" y2="120" stroke="#1e293b" stroke-width="1"/>
+      <text x="67" y="136" class="role-param">agents/backup_</text>
+      <text x="67" y="148" class="role-param">analyst.py</text>
+    </g>
+  </g>
+</svg>

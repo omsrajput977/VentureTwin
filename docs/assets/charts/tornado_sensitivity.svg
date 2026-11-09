@@ -1,0 +1,38 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 820 440" width="100%" height="100%">
+  <defs>
+    <linearGradient id="tealGrad" x1="0%" y1="0%" x2="100%" y2="0%">
+      <stop offset="0%" stop-color="#0d9488"/>
+      <stop offset="100%" stop-color="#2dd4bf"/>
+    </linearGradient>
+    <linearGradient id="coralGrad" x1="100%" y1="0%" x2="0%" y2="0%">
+      <stop offset="0%" stop-color="#e11d48"/>
+      <stop offset="100%" stop-color="#f87171"/>
+    </linearGradient>
+  </defs>
+  <rect width="820" height="440" rx="12" fill="#0b1020" stroke="#1e293b" stroke-width="1.5"/>
+  <text x="32" y="38" fill="#f8fafc" font-family="system-ui, -apple-system, sans-serif" font-size="18" font-weight="700">Sensitivity Tornado Chart (Strategy B: Usage Caps)</text>
+  <text x="32" y="58" fill="#94a3b8" font-family="system-ui, -apple-system, sans-serif" font-size="12">12-Month Net Contribution Swing vs Baseline ($$1.14M) | Ranked by Impact</text>
+  <!-- Baseline Center Line -->
+  <line x1="500.0" y1="65" x2="500.0" y2="395" stroke="#64748b" stroke-dasharray="3,3" stroke-width="1.5"/>
+  <text x="500.0" y="59" fill="#cbd5e1" font-family="ui-monospace, monospace" font-size="11" text-anchor="middle">Baseline $$1.14M</text>
+  <text x="224" y="105.66666666666667" fill="#f1f5f9" font-family="ui-monospace, monospace" font-size="12" font-weight="600" text-anchor="end">monthly_free_signups</text>
+  <rect x="378.9317112857143" y="89.66666666666667" width="121.0682887142857" height="22" rx="4" fill="url(#coralGrad)"/>
+  <text x="370.9317112857143" y="104.66666666666667" fill="#fca5a5" font-family="ui-monospace, monospace" font-size="10" text-anchor="end">$489k</text>
+  <rect x="500.0" y="89.66666666666667" width="240.55557685714282" height="22" rx="4" fill="url(#tealGrad)"/>
+  <text x="748.5555768571428" y="104.66666666666667" fill="#5eead4" font-family="ui-monospace, monospace" font-size="10" text-anchor="start">+$2.44M</text>
+  <text x="224" y="159.0" fill="#f1f5f9" font-family="ui-monospace, monospace" font-size="12" font-weight="600" text-anchor="end">free_to_paid_conversion</text>
+  <rect x="395.061816" y="143.0" width="104.938184" height="22" rx="4" fill="url(#coralGrad)"/>
+  <text x="387.061816" y="158.0" fill="#fca5a5" font-family="ui-monospace, monospace" font-size="10" text-anchor="end">$576k</text>
+  <rect x="500.0" y="143.0" width="170.37600171428574" height="22" rx="4" fill="url(#tealGrad)"/>
+  <text x="678.3760017142857" y="158.0" fill="#5eead4" font-family="ui-monospace, monospace" font-size="10" text-anchor="start">+$2.06M</text>
+  <text x="224" y="212.33333333333334" fill="#f1f5f9" font-family="ui-monospace, monospace" font-size="12" font-weight="600" text-anchor="end">activation_drop_from_gating</text>
+  <text x="224" y="265.66666666666663" fill="#f1f5f9" font-family="ui-monospace, monospace" font-size="12" font-weight="600" text-anchor="end">free_user_ticket_rate</text>
+  <text x="224" y="319.00000000000006" fill="#f1f5f9" font-family="ui-monospace, monospace" font-size="12" font-weight="600" text-anchor="end">infra_cost_per_free_user</text>
+  <text x="224" y="372.33333333333337" fill="#f1f5f9" font-family="ui-monospace, monospace" font-size="12" font-weight="600" text-anchor="end">paid_to_free_cannibalization</text>
+  <!-- Legend -->
+  <rect x="240" y="412" width="12" height="12" rx="2" fill="#f87171"/>
+  <text x="258" y="422" fill="#94a3b8" font-family="system-ui, sans-serif" font-size="11">Downside (P10 bound)</text>
+  <rect x="400" y="412" width="12" height="12" rx="2" fill="#2dd4bf"/>
+  <text x="418" y="422" fill="#94a3b8" font-family="system-ui, sans-serif" font-size="11">Upside (P90 bound)</text>
+  <text x="788" y="422" fill="#64748b" font-family="system-ui, sans-serif" font-size="10" text-anchor="end">Mode: Deterministic Simulation | NimbusDesk (Synthetic Data) | Seed: 42</text>
+</svg>

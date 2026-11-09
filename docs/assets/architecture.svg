@@ -1,0 +1,261 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1000 680" width="100%" height="100%">
+  <defs>
+    <style>
+      .bg { fill: #0b1020; }
+      .layer-bg { fill: #111827; stroke: #1e293b; stroke-width: 1.5; rx: 10px; }
+      .box-bg { fill: #1e293b; stroke: #334155; stroke-width: 1.2; rx: 6px; }
+      .title { font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif; font-size: 22px; font-weight: 800; fill: #ffffff; }
+      .subtitle { font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif; font-size: 12px; fill: #94a3b8; }
+      .layer-title { font-family: ui-monospace, monospace; font-size: 11px; font-weight: 700; fill: #2dd4bf; letter-spacing: 1px; }
+      .box-title { font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif; font-size: 12px; font-weight: 700; fill: #f8fafc; text-anchor: middle; }
+      .box-path { font-family: ui-monospace, monospace; font-size: 9.5px; fill: #94a3b8; text-anchor: middle; }
+      .arrow { stroke: #475569; stroke-width: 1.5; fill: none; marker-end: url(#arrowhead); }
+      .data-arrow { stroke: #2dd4bf; stroke-width: 1.5; stroke-dasharray: 4,4; fill: none; marker-end: url(#arrowheadTeal); }
+    </style>
+    <marker id="arrowhead" markerWidth="6" markerHeight="6" refX="5" refY="3" orient="auto">
+      <polygon points="0 0, 6 3, 0 6" fill="#475569" />
+    </marker>
+    <marker id="arrowheadTeal" markerWidth="6" markerHeight="6" refX="5" refY="3" orient="auto">
+      <polygon points="0 0, 6 3, 0 6" fill="#2dd4bf" />
+    </marker>
+  </defs>
+
+  <!-- Background -->
+  <rect width="1000" height="680" rx="16" class="bg" stroke="#1e293b" stroke-width="1.5"/>
+
+  <!-- Header -->
+  <text x="40" y="42" class="title">VentureTwin System Architecture</text>
+  <text x="40" y="62" class="subtitle">Complete component stack showing real code modules, deterministic engines, and state boundaries</text>
+
+  <!-- 1. Presentation Layer (UI) -->
+  <g transform="translate(40, 80)">
+    <rect width="920" height="74" class="layer-bg"/>
+    <text x="16" y="22" class="layer-title">1. PRESENTATION LAYER (REACT 19 / VITE 6 / TAILWIND)</text>
+    
+    <g transform="translate(16, 32)">
+      <!-- Box 1 -->
+      <rect width="160" height="34" class="box-bg"/>
+      <text x="80" y="16" class="box-title">Decision Console</text>
+      <text x="80" y="28" class="box-path">ui/src/App.tsx</text>
+
+      <!-- Box 2 -->
+      <g transform="translate(172, 0)">
+        <rect width="168" height="34" class="box-bg"/>
+        <text x="84" y="16" class="box-title">Execution Graph DAG</text>
+        <text x="84" y="28" class="box-path">ui/components/ExecutionGraph</text>
+      </g>
+
+      <!-- Box 3 -->
+      <g transform="translate(352, 0)">
+        <rect width="168" height="34" class="box-bg"/>
+        <text x="84" y="16" class="box-title">Agent Findings Modal</text>
+        <text x="84" y="28" class="box-path">ui/components/FindingsModal</text>
+      </g>
+
+      <!-- Box 4 -->
+      <g transform="translate(532, 0)">
+        <rect width="176" height="34" class="box-bg"/>
+        <text x="88" y="16" class="box-title">Consolidated Report</text>
+        <text x="88" y="28" class="box-path">ui/components/DecisionReport</text>
+      </g>
+
+      <!-- Box 5 -->
+      <g transform="translate(720, 0)">
+        <rect width="168" height="34" class="box-bg"/>
+        <text x="84" y="16" class="box-title">Live Event Stream (SSE)</text>
+        <text x="84" y="28" class="box-path">ui/components/EventStream</text>
+      </g>
+    </g>
+  </g>
+
+  <!-- Downward connector 1 -->
+  <line x1="500" y1="154" x2="500" y2="174" class="arrow"/>
+
+  <!-- 2. API & Ingestion Layer -->
+  <g transform="translate(40, 175)">
+    <rect width="920" height="74" class="layer-bg"/>
+    <text x="16" y="22" class="layer-title">2. API &amp; STREAMING INGESTION (FASTAPI / STARLETTE)</text>
+
+    <g transform="translate(16, 32)">
+      <g transform="translate(0, 0)">
+        <rect width="210" height="34" class="box-bg"/>
+        <text x="105" y="16" class="box-title">POST /api/decisions</text>
+        <text x="105" y="28" class="box-path">api/app.py (Intake &amp; Boot)</text>
+      </g>
+      <g transform="translate(225, 0)">
+        <rect width="210" height="34" class="box-bg"/>
+        <text x="105" y="16" class="box-title">GET /stream (SSE Telemetry)</text>
+        <text x="105" y="28" class="box-path">state/event_bus.py</text>
+      </g>
+      <g transform="translate(450, 0)">
+        <rect width="215" height="34" class="box-bg"/>
+        <text x="107" y="16" class="box-title">POST /inject-failure</text>
+        <text x="107" y="28" class="box-path">api/app.py (Chaos Testing)</text>
+      </g>
+      <g transform="translate(680, 0)">
+        <rect width="208" height="34" class="box-bg"/>
+        <text x="104" y="16" class="box-title">POST /approve (Human Gate)</text>
+        <text x="104" y="28" class="box-path">api/app.py (Sign-off)</text>
+      </g>
+    </g>
+  </g>
+
+  <!-- Downward connector 2 -->
+  <line x1="500" y1="249" x2="500" y2="269" class="arrow"/>
+
+  <!-- 3. Orchestrator & Task DAG -->
+  <g transform="translate(40, 270)">
+    <rect width="920" height="78" class="layer-bg" stroke="#8b5cf6" stroke-width="1.5"/>
+    <text x="16" y="22" class="layer-title" fill="#a78bfa">3. SUPERVISOR ORCHESTRATION ENGINE (TASK DAG)</text>
+
+    <g transform="translate(16, 32)">
+      <g transform="translate(0, 0)">
+        <rect width="280" height="36" class="box-bg" stroke="#8b5cf6"/>
+        <text x="140" y="16" class="box-title" fill="#c084fc">Supervisor Orchestrator</text>
+        <text x="140" y="29" class="box-path">orchestrator/supervisor.py</text>
+      </g>
+      <g transform="translate(295, 0)">
+        <rect width="295" height="36" class="box-bg"/>
+        <text x="147" y="16" class="box-title">Async Task Runner (Parallel Waves)</text>
+        <text x="147" y="29" class="box-path">orchestrator/task_runner.py</text>
+      </g>
+      <g transform="translate(605, 0)">
+        <rect width="283" height="36" class="box-bg"/>
+        <text x="141" y="16" class="box-title">Decomposition Parser</text>
+        <text x="141" y="29" class="box-path">orchestrator/parser.py (11 DAG Nodes)</text>
+      </g>
+    </g>
+  </g>
+
+  <!-- Downward connector 3 -->
+  <line x1="500" y1="348" x2="500" y2="368" class="arrow"/>
+
+  <!-- 4. Multi-Agent Swarm -->
+  <g transform="translate(40, 369)">
+    <rect width="920" height="84" class="layer-bg"/>
+    <text x="16" y="20" class="layer-title">4. SPECIALIST AGENT SWARM (INDEPENDENT FUNCTIONAL PERSPECTIVES)</text>
+
+    <g transform="translate(14, 30)">
+      <!-- CFO -->
+      <rect width="118" height="42" class="box-bg" stroke="#38bdf8"/>
+      <text x="59" y="16" class="box-title" fill="#38bdf8">CFO</text>
+      <text x="59" y="28" class="box-path">agents/cfo.py</text>
+      <text x="59" y="38" font-family="ui-monospace" font-size="7.5" fill="#64748b" text-anchor="middle">Runway/Burn</text>
+
+      <!-- Growth -->
+      <g transform="translate(126, 0)">
+        <rect width="118" height="42" class="box-bg" stroke="#34d399"/>
+        <text x="59" y="16" class="box-title" fill="#34d399">Growth</text>
+        <text x="59" y="28" class="box-path">agents/growth.py</text>
+        <text x="59" y="38" font-family="ui-monospace" font-size="7.5" fill="#64748b" text-anchor="middle">Funnels/Signups</text>
+      </g>
+
+      <!-- CTO -->
+      <g transform="translate(252, 0)">
+        <rect width="118" height="42" class="box-bg" stroke="#fbbf24"/>
+        <text x="59" y="16" class="box-title" fill="#fbbf24">CTO</text>
+        <text x="59" y="28" class="box-path">agents/cto.py</text>
+        <text x="59" y="38" font-family="ui-monospace" font-size="7.5" fill="#64748b" text-anchor="middle">Infra/Caps</text>
+      </g>
+
+      <!-- Customer -->
+      <g transform="translate(378, 0)">
+        <rect width="118" height="42" class="box-bg" stroke="#2dd4bf"/>
+        <text x="59" y="16" class="box-title" fill="#2dd4bf">Customer</text>
+        <text x="59" y="28" class="box-path">agents/customer.py</text>
+        <text x="59" y="38" font-family="ui-monospace" font-size="7.5" fill="#64748b" text-anchor="middle">CSAT/Tickets</text>
+      </g>
+
+      <!-- Product -->
+      <g transform="translate(504, 0)">
+        <rect width="118" height="42" class="box-bg" stroke="#818cf8"/>
+        <text x="59" y="16" class="box-title" fill="#818cf8">Product</text>
+        <text x="59" y="28" class="box-path">agents/product.py</text>
+        <text x="59" y="38" font-family="ui-monospace" font-size="7.5" fill="#64748b" text-anchor="middle">Gating/Features</text>
+      </g>
+
+      <!-- Skeptic -->
+      <g transform="translate(630, 0)">
+        <rect width="124" height="42" class="box-bg" stroke="#f87171"/>
+        <text x="62" y="16" class="box-title" fill="#f87171">Skeptic Auditor</text>
+        <text x="62" y="28" class="box-path">agents/skeptic.py</text>
+        <text x="62" y="38" font-family="ui-monospace" font-size="7.5" fill="#64748b" text-anchor="middle">Critiques/Audit</text>
+      </g>
+
+      <!-- Backup Analyst -->
+      <g transform="translate(762, 0)">
+        <rect width="130" height="42" class="box-bg" stroke="#e2e8f0" stroke-dasharray="3,3"/>
+        <text x="65" y="16" class="box-title" fill="#e2e8f0">Backup Analyst</text>
+        <text x="65" y="28" class="box-path">agents/backup.py</text>
+        <text x="65" y="38" font-family="ui-monospace" font-size="7.5" fill="#64748b" text-anchor="middle">Fault Resilience</text>
+      </g>
+    </g>
+  </g>
+
+  <!-- Downward connector 4 -->
+  <line x1="500" y1="453" x2="500" y2="473" class="arrow"/>
+
+  <!-- 5. Deterministic Engines & Synthesis -->
+  <g transform="translate(40, 474)">
+    <rect width="920" height="88" class="layer-bg"/>
+    <text x="16" y="20" class="layer-title">5. DETERMINISTIC ENGINES &amp; SYNTHESIS (ZERO LLM ARITHMETIC)</text>
+
+    <g transform="translate(16, 32)">
+      <!-- Conflict Resolver -->
+      <g transform="translate(0, 0)">
+        <rect width="210" height="44" class="box-bg" stroke="#fbbf24"/>
+        <text x="105" y="17" class="box-title">Conflict Isolation</text>
+        <text x="105" y="30" class="box-path">conflict/detector &amp; resolver.py</text>
+        <text x="105" y="40" font-family="ui-monospace" font-size="7.5" fill="#94a3b8" text-anchor="middle">Empirical Sensitivity · No Voting</text>
+      </g>
+
+      <!-- SaaS Simulation Engine -->
+      <g transform="translate(225, 0)">
+        <rect width="225" height="44" class="box-bg" stroke="#2dd4bf"/>
+        <text x="112" y="17" class="box-title">SaaS Dynamics Engine</text>
+        <text x="112" y="30" class="box-path">simulation/engine &amp; saas_model.py</text>
+        <text x="112" y="40" font-family="ui-monospace" font-size="7.5" fill="#94a3b8" text-anchor="middle">Monte Carlo (500 runs) · Tornado</text>
+      </g>
+
+      <!-- Number Registry & Verifier -->
+      <g transform="translate(465, 0)">
+        <rect width="225" height="44" class="box-bg" stroke="#38bdf8"/>
+        <text x="112" y="17" class="box-title">Workflow Verifier</text>
+        <text x="112" y="30" class="box-path">verification/verifier.py</text>
+        <text x="112" y="40" font-family="ui-monospace" font-size="7.5" fill="#94a3b8" text-anchor="middle">NumberRegistry · 7 Audit Passes</text>
+      </g>
+
+      <!-- Report Generator -->
+      <g transform="translate(705, 0)">
+        <rect width="183" height="44" class="box-bg" stroke="#8b5cf6"/>
+        <text x="91" y="17" class="box-title">Report Synthesis</text>
+        <text x="91" y="30" class="box-path">report/generator.py</text>
+        <text x="91" y="40" font-family="ui-monospace" font-size="7.5" fill="#94a3b8" text-anchor="middle">Consolidated Deliverable</text>
+      </g>
+    </g>
+  </g>
+
+  <!-- Downward connector 5 -->
+  <line x1="500" y1="562" x2="500" y2="580" class="arrow"/>
+
+  <!-- 6. Persistence & Telemetry Layer -->
+  <g transform="translate(40, 581)">
+    <rect width="920" height="66" class="layer-bg"/>
+    <text x="16" y="20" class="layer-title">6. PERSISTENCE &amp; TELEMETRY BOUNDARY</text>
+
+    <g transform="translate(16, 28)">
+      <g transform="translate(0, 0)">
+        <rect width="270" height="28" class="box-bg"/>
+        <text x="135" y="18" class="box-path">Shared State Schemas: state/schemas.py</text>
+      </g>
+      <g transform="translate(285, 0)">
+        <rect width="290" height="28" class="box-bg"/>
+        <text x="145" y="18" class="box-path">SQLite Checkpoints: state/checkpoints.py</text>
+      </g>
+      <g transform="translate(590, 0)">
+        <rect width="298" height="28" class="box-bg"/>
+        <text x="149" y="18" class="box-path">Synthetic Data: data/synthetic_company.json</text>
+      </g>
+    </g>
+  </g>
+</svg>

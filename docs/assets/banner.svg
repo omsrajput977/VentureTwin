@@ -1,0 +1,162 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1200 360" width="100%" height="100%">
+  <defs>
+    <style>
+      .bg { fill: #0b1020; }
+      .title { font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif; font-size: 46px; font-weight: 800; fill: #ffffff; letter-spacing: -0.5px; }
+      .badge-text { font-family: ui-monospace, SFMono-Regular, "SF Mono", Menlo, Consolas, monospace; font-size: 11px; font-weight: 700; fill: #2dd4bf; letter-spacing: 1.5px; }
+      .tagline { font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif; font-size: 18px; font-weight: 400; fill: #94a3b8; }
+      .subtag { font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif; font-size: 13px; font-weight: 500; fill: #64748b; }
+      .node-txt { font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif; font-size: 11px; font-weight: 700; fill: #f8fafc; text-anchor: middle; }
+      .edge { stroke: #1e293b; stroke-width: 1.5; stroke-dasharray: 4,4; }
+      
+      @keyframes pulseTeal {
+        0% { r: 5px; opacity: 1; }
+        50% { r: 16px; opacity: 0; }
+        100% { r: 5px; opacity: 0; }
+      }
+      @keyframes pulseViolet {
+        0% { r: 8px; opacity: 0.9; }
+        50% { r: 24px; opacity: 0; }
+        100% { r: 8px; opacity: 0; }
+      }
+      @keyframes dashAnim {
+        from { stroke-dashoffset: 24; }
+        to { stroke-dashoffset: 0; }
+      }
+      @keyframes floatSlow {
+        0%, 100% { transform: translateY(0px); }
+        50% { transform: translateY(-4px); }
+      }
+      
+      .pulse-t { animation: pulseTeal 3s ease-out infinite; }
+      .pulse-v { animation: pulseViolet 3.5s ease-out infinite; }
+      .active-edge { stroke: #2dd4bf; stroke-width: 1.5; stroke-dasharray: 6,6; animation: dashAnim 1.8s linear infinite; }
+      .float-group { animation: floatSlow 4s ease-in-out infinite; }
+    </style>
+    
+    <linearGradient id="supGrad" x1="0%" y1="0%" x2="100%" y2="100%">
+      <stop offset="0%" stop-color="#c084fc"/>
+      <stop offset="100%" stop-color="#8b5cf6"/>
+    </linearGradient>
+    <linearGradient id="cfoGrad" x1="0%" y1="0%" x2="100%" y2="100%">
+      <stop offset="0%" stop-color="#38bdf8"/>
+      <stop offset="100%" stop-color="#0284c7"/>
+    </linearGradient>
+    <linearGradient id="growthGrad" x1="0%" y1="0%" x2="100%" y2="100%">
+      <stop offset="0%" stop-color="#34d399"/>
+      <stop offset="100%" stop-color="#059669"/>
+    </linearGradient>
+    <linearGradient id="ctoGrad" x1="0%" y1="0%" x2="100%" y2="100%">
+      <stop offset="0%" stop-color="#fbbf24"/>
+      <stop offset="100%" stop-color="#d97706"/>
+    </linearGradient>
+    <linearGradient id="skepticGrad" x1="0%" y1="0%" x2="100%" y2="100%">
+      <stop offset="0%" stop-color="#f87171"/>
+      <stop offset="100%" stop-color="#dc2626"/>
+    </linearGradient>
+    <linearGradient id="glowBack" x1="0%" y1="0%" x2="100%" y2="0%">
+      <stop offset="0%" stop-color="#1e1b4b" stop-opacity="0.6"/>
+      <stop offset="50%" stop-color="#0f172a" stop-opacity="0.8"/>
+      <stop offset="100%" stop-color="#064e3b" stop-opacity="0.3"/>
+    </linearGradient>
+  </defs>
+
+  <!-- Card Frame -->
+  <rect width="1200" height="360" rx="16" class="bg" stroke="#1e293b" stroke-width="1.5"/>
+  <rect x="2" y="2" width="1196" height="356" rx="14" fill="url(#glowBack)"/>
+
+  <!-- Left: Brand & Copy -->
+  <g transform="translate(64, 80)">
+    <rect x="0" y="0" width="168" height="26" rx="13" fill="#134e4a" fill-opacity="0.4" stroke="#2dd4bf" stroke-width="1"/>
+    <text x="14" y="17" class="badge-text">SWARMFLOW ENGINE</text>
+
+    <text x="0" y="72" class="title">VentureTwin</text>
+    
+    <text x="0" y="112" class="tagline">AI Flight Simulator &amp; Operational Digital Twin for SaaS Leaders</text>
+    
+    <text x="0" y="146" class="subtag">Empirical multi-agent coordination · Conflicts resolved by Monte Carlo simulation</text>
+    <text x="0" y="168" class="subtag">Zero hallucinated metrics · Autonomous 3-tier fault recovery · Verifier audited</text>
+
+    <!-- Micro Tech Pills -->
+    <g transform="translate(0, 198)">
+      <rect x="0" y="0" width="108" height="24" rx="6" fill="#1e293b" stroke="#334155" stroke-width="1"/>
+      <text x="54" y="16" fill="#94a3b8" font-family="ui-monospace, monospace" font-size="11" text-anchor="middle">Python 3.13</text>
+
+      <rect x="116" y="0" width="104" height="24" rx="6" fill="#1e293b" stroke="#334155" stroke-width="1"/>
+      <text x="168" y="16" fill="#94a3b8" font-family="ui-monospace, monospace" font-size="11" text-anchor="middle">FastAPI</text>
+
+      <rect x="228" y="0" width="104" height="24" rx="6" fill="#1e293b" stroke="#334155" stroke-width="1"/>
+      <text x="280" y="16" fill="#94a3b8" font-family="ui-monospace, monospace" font-size="11" text-anchor="middle">React 19</text>
+
+      <rect x="340" y="0" width="124" height="24" rx="6" fill="#1e293b" stroke="#334155" stroke-width="1"/>
+      <text x="402" y="16" fill="#2dd4bf" font-family="ui-monospace, monospace" font-size="11" text-anchor="middle">151 Tests Pass</text>
+    </g>
+  </g>
+
+  <!-- Right: Orchestration Swarm Constellation -->
+  <g class="float-group" transform="translate(920, 180)">
+    <!-- Orbit Guide Circles -->
+    <circle cx="0" cy="0" r="130" fill="none" stroke="#1e293b" stroke-width="1" stroke-dasharray="2,4"/>
+    <circle cx="0" cy="0" r="75" fill="none" stroke="#1e293b" stroke-width="1" stroke-dasharray="2,4"/>
+
+    <!-- Mesh Connectors to Supervisor -->
+    <line x1="0" y1="0" x2="-90" y2="-90" class="active-edge"/>
+    <line x1="0" y1="0" x2="90" y2="-90" class="edge"/>
+    <line x1="0" y1="0" x2="125" y2="20" class="active-edge"/>
+    <line x1="0" y1="0" x2="45" y2="120" class="edge"/>
+    <line x1="0" y1="0" x2="-80" y2="100" class="active-edge"/>
+    <line x1="0" y1="0" x2="-130" y2="0" class="edge"/>
+
+    <!-- Cross-Agent Discussion Connectors -->
+    <path d="M -90 -90 Q 0 -130 90 -90" fill="none" stroke="#334155" stroke-width="1" stroke-dasharray="3,3"/>
+    <path d="M 90 -90 Q 140 -35 125 20" fill="none" stroke="#334155" stroke-width="1" stroke-dasharray="3,3"/>
+    <path d="M -80 100 Q -130 50 -130 0" fill="none" stroke="#334155" stroke-width="1" stroke-dasharray="3,3"/>
+
+    <!-- Specialist Agent Orbiting Nodes -->
+    <!-- CFO Node -->
+    <g transform="translate(-90, -90)">
+      <circle cx="0" cy="0" r="24" fill="url(#cfoGrad)" stroke="#38bdf8" stroke-width="2"/>
+      <circle cx="0" cy="0" r="10" fill="none" stroke="#38bdf8" class="pulse-t"/>
+      <text x="0" y="4" class="node-txt">CFO</text>
+    </g>
+
+    <!-- Growth Node -->
+    <g transform="translate(90, -90)">
+      <circle cx="0" cy="0" r="24" fill="url(#growthGrad)" stroke="#34d399" stroke-width="2"/>
+      <circle cx="0" cy="0" r="10" fill="none" stroke="#34d399" class="pulse-t"/>
+      <text x="0" y="4" class="node-txt">GRO</text>
+    </g>
+
+    <!-- CTO Node -->
+    <g transform="translate(125, 20)">
+      <circle cx="0" cy="0" r="23" fill="url(#ctoGrad)" stroke="#fbbf24" stroke-width="2"/>
+      <text x="0" y="4" class="node-txt">CTO</text>
+    </g>
+
+    <!-- Product Node -->
+    <g transform="translate(45, 120)">
+      <circle cx="0" cy="0" r="22" fill="#1e293b" stroke="#818cf8" stroke-width="2"/>
+      <text x="0" y="4" class="node-txt">PROD</text>
+    </g>
+
+    <!-- Customer Node -->
+    <g transform="translate(-80, 100)">
+      <circle cx="0" cy="0" r="22" fill="#1e293b" stroke="#2dd4bf" stroke-width="2"/>
+      <text x="0" y="4" class="node-txt">CUST</text>
+    </g>
+
+    <!-- Skeptic Node -->
+    <g transform="translate(-130, 0)">
+      <circle cx="0" cy="0" r="23" fill="url(#skepticGrad)" stroke="#f87171" stroke-width="2"/>
+      <circle cx="0" cy="0" r="10" fill="none" stroke="#f87171" class="pulse-t"/>
+      <text x="0" y="4" class="node-txt">SKEP</text>
+    </g>
+
+    <!-- Center: Supervisor Node -->
+    <g>
+      <circle cx="0" cy="0" r="36" fill="url(#supGrad)" stroke="#e9d5ff" stroke-width="2.5"/>
+      <circle cx="0" cy="0" r="16" fill="none" stroke="#c084fc" class="pulse-v"/>
+      <text x="0" y="5" font-family="-apple-system, BlinkMacSystemFont, sans-serif" font-size="12" font-weight="800" fill="#ffffff" text-anchor="middle">SUPERVISOR</text>
+    </g>
+  </g>
+</svg>
