@@ -187,6 +187,9 @@ class Rebuttal(BaseModel):
                     data["stance"] = "defend"
         return data
 
+class DiscussionRebuttalsDraft(BaseModel):
+    rebuttals: List[Rebuttal] = Field(default_factory=list)
+
 class Message(BaseModel):
     from_agent: str
     to_agent: str

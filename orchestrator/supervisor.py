@@ -1,3 +1,4 @@
+import os
 import asyncio
 import logging
 import time
@@ -123,11 +124,21 @@ class Supervisor:
             for task in ready_tasks:
                 active_ids.add(task.id)
 
-            task_coroutines = [
-                self._run_task_with_recovery(task, state)
-                for task in ready_tasks
-            ]
-            results = await asyncio.gather(*task_coroutines, return_exceptions=True)
+            if int(os.getenv("LLM_MAX_CONCURRENCY", "1")) <= 1:
+                # Sequential execution prevents burst rate limits on free-tier LLM providers
+                results = []
+                for task in ready_tasks:
+                    try:
+                        res = await self._run_task_with_recovery(task, state)
+                        results.append(res)
+                    except Exception as exc:
+                        results.append(exc)
+            else:
+                task_coroutines = [
+                    self._run_task_with_recovery(task, state)
+                    for task in ready_tasks
+                ]
+                results = await asyncio.gather(*task_coroutines, return_exceptions=True)
 
             for task, res in zip(ready_tasks, results):
                 active_ids.remove(task.id)
@@ -336,28 +347,75 @@ class Supervisor:
 
     async def _run_discussion_task(self, task: Task, state: WorkflowState) -> Any:
         rebuttals_logged = []
+        consolidated_map: Dict[str, Any] = {}
+
+        # Consolidate multi-agent rebuttals into 1 structured call in real/record mode to prevent RPM rate limit spikes
+        if self.llm_client and self.llm_client.mode in ["real", "record"] and len(state.skeptic_challenges) > 1:
+            from state.schemas import DiscussionRebuttalsDraft
+            critiques_summary = [
+                {
+                    "agent": c.get("agent", ""),
+                    "parameter": c.get("assumption", ""),
+                    "critique": c.get("challenge", "")
+                }
+                for c in state.skeptic_challenges
+            ]
+            prompt = (
+                "You are facilitating the executive cross-agent discussion. "
+                "The Skeptic has audited peer assumptions and raised these critiques:\n"
+                f"{json.dumps(critiques_summary, indent=2)}\n\n"
+                "For EACH challenged agent above, formulate a structured rebuttal: "
+                "choose 'concede', 'defend', or 'compromise'. "
+                "Provide updated parameter bounds (updated_low, updated_base, updated_high) if conceding or compromising. "
+                "Return a JSON object containing a list of 'rebuttals'."
+            )
+            try:
+                draft: DiscussionRebuttalsDraft = await llm_call(
+                    prompt=prompt,
+                    response_model=DiscussionRebuttalsDraft,
+                    system_prompt="You coordinate executive cross-agent rebuttals. Return strictly valid JSON matching the schema.",
+                    client=self.llm_client,
+                    metadata={"agent_key": "discussion", "task_kind": "discussion"}
+                )
+                for reb in draft.rebuttals:
+                    consolidated_map[reb.agent.lower()] = reb
+            except Exception as e:
+                logger.warning(f"Consolidated rebuttal call failed ({e}). Falling back to individual/telemetry handling.")
+
         for chal in state.skeptic_challenges:
             target_agent = chal.get("agent", "")
             param = chal.get("assumption", "")
             concern = chal.get("challenge", "")
 
-            prompt = (
-                f"Agent: {target_agent}\n"
-                f"Parameter Challenged: {param}\n"
-                f"Skeptic Critique: {concern}\n"
-                "Respond with a structured rebuttal: choose 'concede', 'defend', or 'compromise'. "
-                "Provide updated parameter bounds if conceding or compromising."
-            )
+            if target_agent.lower() in consolidated_map:
+                rebuttal = consolidated_map[target_agent.lower()]
+            else:
+                prompt = (
+                    f"Agent: {target_agent}\n"
+                    f"Parameter Challenged: {param}\n"
+                    f"Skeptic Critique: {concern}\n"
+                    "Respond with a structured rebuttal: choose 'concede', 'defend', or 'compromise'. "
+                    "Provide updated parameter bounds if conceding or compromising."
+                )
 
-            from agents.llm_client import llm_call
-            from state.schemas import Rebuttal, Message
-            rebuttal: Rebuttal = await llm_call(
-                prompt=prompt,
-                response_model=Rebuttal,
-                system_prompt=f"You are {target_agent}. Provide a bounded professional defense or concession to the Skeptic.",
-                client=self.llm_client,
-                metadata={"agent_key": target_agent.lower(), "parameter": param, "task_kind": "discussion"}
-            )
+                from agents.llm_client import llm_call
+                from state.schemas import Rebuttal, Message
+                try:
+                    rebuttal = await llm_call(
+                        prompt=prompt,
+                        response_model=Rebuttal,
+                        system_prompt=f"You are {target_agent}. Provide a bounded professional defense or concession to the Skeptic.",
+                        client=self.llm_client,
+                        metadata={"agent_key": target_agent.lower(), "parameter": param, "task_kind": "discussion"}
+                    )
+                except Exception as reb_err:
+                    logger.warning(f"Rebuttal call failed for {target_agent}: {reb_err}. Maintaining telemetry defense.")
+                    rebuttal = Rebuttal(
+                        agent=target_agent,
+                        parameter=param,
+                        stance="defend",
+                        rationale="Maintained baseline estimate grounded in verified telemetry."
+                    )
 
             state.rebuttals.append(rebuttal)
             msg = Message(

@@ -141,7 +141,7 @@ class LLMClient:
 
         # 3. Real or Record mode (with semaphore limiter, pacing, and exponential backoff)
         last_error = None
-        min_pacing = float(os.getenv("LLM_REQUEST_INTERVAL", "4.0")) if self.provider == "gemini" else float(os.getenv("LLM_REQUEST_INTERVAL", "0.2"))
+        min_pacing = float(os.getenv("LLM_REQUEST_INTERVAL", "4.5")) if self.provider == "gemini" else float(os.getenv("LLM_REQUEST_INTERVAL", "0.2"))
         async with _LLM_SEMAPHORE:
             for attempt in range(max_retries):
                 try:
@@ -152,7 +152,6 @@ class LLMClient:
                         elapsed = now - _last_request_time
                         if elapsed < min_pacing:
                             await asyncio.sleep(min_pacing - elapsed)
-                        _last_request_time = time.time()
 
                     raw_json = await self._call_provider_adapter(
                         prompt=prompt,
@@ -160,6 +159,7 @@ class LLMClient:
                         response_model=response_model,
                         temperature=temperature
                     )
+                    _last_request_time = time.time()
 
                     # Validate response
                     try:

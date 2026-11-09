@@ -160,6 +160,11 @@ async def get_company():
 async def submit_decision(req: DecisionRequest, background_tasks: BackgroundTasks):
     """Submits a strategic decision query and launches the multi-agent workflow."""
     decision = parse_decision_query(req.query, req.constraints, allow_all=True)
+    if decision.type == "unsupported":
+        raise HTTPException(
+            status_code=400,
+            detail=decision.objective
+        )
     
     supervisor = Supervisor()
     active_supervisors[decision.id] = supervisor

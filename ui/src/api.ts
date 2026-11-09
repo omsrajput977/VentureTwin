@@ -67,7 +67,14 @@ export async function submitDecision(query: string, constraints?: Record<string,
     headers: { 'Content-Type': 'application/json' },
     body: JSON.stringify({ query, constraints })
   });
-  if (!res.ok) throw new Error('Failed to submit decision');
+  if (!res.ok) {
+    let msg = 'Failed to submit decision';
+    try {
+      const err = await res.json();
+      if (err.detail) msg = err.detail;
+    } catch {}
+    throw new Error(msg);
+  }
   return res.json();
 }
 

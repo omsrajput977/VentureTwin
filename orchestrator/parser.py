@@ -39,12 +39,42 @@ def parse_decision_query(
             constraints=effective_constraints
         )
 
-    # 2. If allow_all=True (frontend interaction), dynamically route any strategic question to the engine
+    # 2. If allow_all=True (frontend interaction), validate that query is a business/strategic decision
     if allow_all:
+        saas_decision_terms = [
+            "plan", "tier", "free", "freemium", "pricing", "price", "charge", "cost", "fee",
+            "subscription", "discount", "starter", "pro", "enterprise", "churn", "retention",
+            "cancel", "customer", "support", "ticket", "mrr", "arr", "revenue", "runway",
+            "cash", "burn", "margin", "growth", "funnel", "conversion", "trial", "signup",
+            "visitor", "traffic", "acquisition", "cac", "ltv", "infra", "infrastructure",
+            "cloud", "server", "scale", "launch", "introduce", "expand", "gating", "caps",
+            "limit", "feature", "usage", "hire", "spend", "sales", "marketing", "raise",
+            "increase", "cut", "lower", "reduce", "optimize", "strategy", "decision"
+        ]
+        is_strategic = any(term in q_lower for term in saas_decision_terms)
+        
+        if not is_strategic:
+            return Decision(
+                id=dec_id,
+                type="unsupported",
+                question=query,
+                objective=(
+                    f"Out of Domain: '{query}' is not a SaaS business strategy decision. "
+                    "VentureTwin is an executive digital twin for NimbusDesk evaluating pricing, packaging, "
+                    "churn reduction, infrastructure scaling, and financial runway strategies."
+                ),
+                constraints=effective_constraints
+            )
+
         if any(k in q_lower for k in ["price", "pricing", "raise", "increase", "cut", "discount", "tier", "billing", "rate"]):
             obj = f"Evaluate revenue elasticity, customer churn risk, and runway implications of: {query}"
+        elif any(k in q_lower for k in ["churn", "retention", "cancel", "support"]):
+            obj = f"Evaluate retention dynamics, support load, and customer lifetime value for: {query}"
+        elif any(k in q_lower for k in ["infra", "cloud", "server", "cost", "burn"]):
+            obj = f"Evaluate cloud infrastructure unit costs, engineering capacity, and runway burn for: {query}"
         else:
             obj = f"Evaluate financial runway, growth velocity, operational capacity, and unit economics for: {query}"
+
         return Decision(
             id=dec_id,
             type="free_plan",
