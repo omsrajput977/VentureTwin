@@ -151,6 +151,8 @@ def compute_dynamic_strategy_comparison(
             "base_value": spec.base,
             "margin_at_low": round(margin_low, 2),
             "margin_at_high": round(margin_high, 2),
+            "net_contribution_at_low": round(margin_low, 2),
+            "net_contribution_at_high": round(margin_high, 2),
             "swing": swing
         })
     margin_tornado.sort(key=lambda x: x["swing"], reverse=True)

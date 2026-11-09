@@ -92,9 +92,9 @@ if os.path.exists(dist_assets):
 @app.get("/api/health", response_model=HealthStatus)
 async def health(probe: bool = False):
     import time
-    llm_mode = os.getenv("LLM_MODE", "mock").lower()
-    provider = os.getenv("LLM_PROVIDER", "mock")
-    model = os.getenv("LLM_MODEL", "mock-agent-v1")
+    llm_mode = os.getenv("LLM_MODE", "mock").lower().strip()
+    provider = os.getenv("LLM_PROVIDER", "mock").lower().strip()
+    model = (os.getenv("LLM_MODEL") or "mock-agent-v1").strip()
     probe_latency: Optional[float] = None
     
     if llm_mode in ["real", "record"]:
@@ -166,7 +166,8 @@ async def submit_decision(req: DecisionRequest, background_tasks: BackgroundTask
             detail=decision.objective
         )
     
-    supervisor = Supervisor()
+    from agents.llm_client import LLMClient
+    supervisor = Supervisor(llm_client=LLMClient())
     active_supervisors[decision.id] = supervisor
 
     # Run workflow asynchronously

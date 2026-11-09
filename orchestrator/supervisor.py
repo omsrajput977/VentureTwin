@@ -536,7 +536,18 @@ class Supervisor:
     async def _run_simulation_task(self, task: Task, state: WorkflowState) -> Any:
         company_data = self.company_data or load_company_data()
         reconciled = reconcile_assumptions(state.assumptions)
-        strategies = ["A_limited_features", "B_usage_caps", "C_no_free_plan"]
+        
+        # Select strategy set dynamically based on decision type
+        dec_type = getattr(state.decision, "type", "free_plan")
+        if dec_type == "price_increase":
+            strategies = ["A_20pct_price_increase", "B_10pct_with_grandfathering", "C_status_quo_pricing"]
+        elif dec_type == "enterprise_tier":
+            strategies = ["A_enterprise_dedicated_sla", "B_self_serve_pro_tier", "C_status_quo"]
+        elif dec_type == "churn_reduction":
+            strategies = ["A_proactive_csm_program", "B_automated_health_scoring", "C_status_quo"]
+        else:
+            strategies = ["A_limited_features", "B_usage_caps", "C_no_free_plan"]
+
         scenarios = [
             "conservative",
             "expected",
@@ -567,8 +578,8 @@ class Supervisor:
         self.flip_point_info = comparison["flip_point"]
 
         # 500-sample multi-strategy Monte Carlo on shared parameter draws
-        top_strat_name = ranked[0].strategy if (ranked and ranked[0].is_feasible) else "B_usage_caps"
-        self.mc_summary = run_monte_carlo(top_strat_name, reconciled, company_data, n_samples=500)
+        top_strat_name = ranked[0].strategy if (ranked and ranked[0].is_feasible) else (ranked[0].strategy if ranked else strategies[0])
+        self.mc_summary = run_monte_carlo(top_strat_name, reconciled, company_data, n_samples=500, all_strategies=strategies)
 
         return {"status": "simulated", "runs_count": len(sim_runs)}
 

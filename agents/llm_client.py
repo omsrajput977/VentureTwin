@@ -56,13 +56,13 @@ class LLMClient:
         model: Optional[str] = None,
         mock_handler: Optional[Callable[..., Any]] = None
     ):
-        raw_mode = (mode or os.getenv("LLM_MODE", "mock")).lower()
+        raw_mode = (mode or os.getenv("LLM_MODE", "mock")).lower().strip()
         if raw_mode not in ["mock", "real", "record", "replay"]:
             raw_mode = "mock"
         self.mode: Literal["mock", "real", "record", "replay"] = raw_mode  # type: ignore
 
-        self.provider = (provider or os.getenv("LLM_PROVIDER", "mock")).lower()
-        self.model = model or os.getenv("LLM_MODEL")
+        self.provider = (provider or os.getenv("LLM_PROVIDER", "mock")).lower().strip()
+        self.model = (model or os.getenv("LLM_MODEL") or "").strip()
         self.mock_handler = mock_handler
         self.call_count: int = 0
 

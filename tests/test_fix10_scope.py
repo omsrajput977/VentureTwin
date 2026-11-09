@@ -38,7 +38,7 @@ def test_frontend_allow_all_supports_any_question():
         "How do we reduce customer churn and protect runway?"
     ]:
         d = parse_decision_query(q, allow_all=True)
-        assert d.type == "free_plan"
+        assert d.type in ["free_plan", "price_increase", "enterprise_tier", "churn_reduction", "strategic_decision"]
         assert d.question == q
         dag = decompose_decision(d)
         assert dag.validate() is True

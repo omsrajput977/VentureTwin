@@ -72,7 +72,74 @@ def run_saas_dynamics(
     activation_rate = baseline_activation_rate
     effective_signups = free_signups_mo
 
-    if strategy == "C_no_free_plan":
+    # Strategy levers from calibrated parameters and domain strategy targets
+    if "20pct" in strategy or "20_percent" in strategy:
+        arpu = arpu * 1.20
+        churn_rate = base_churn * 1.20
+        free_signups_mo = 0.0
+        effective_signups = 0.0
+        conversion_rate = 0.0
+        cannibalization_rate = 0.0
+        cost_per_free = 0.0
+        free_ticket_rate = 0.0
+        paid_acquisition_lift = 0.96
+    elif "10pct" in strategy or "grandfather" in strategy:
+        arpu = arpu * 1.10
+        churn_rate = base_churn * 1.04
+        free_signups_mo = 0.0
+        effective_signups = 0.0
+        conversion_rate = 0.0
+        cannibalization_rate = 0.0
+        cost_per_free = 0.0
+        free_ticket_rate = 0.0
+        paid_acquisition_lift = 1.02
+    elif "enterprise_dedicated" in strategy or "dedicated_sla" in strategy:
+        arpu = arpu * 1.30
+        base_infra = base_infra + 2800.0
+        paid_acquisition_lift = 1.08
+        free_signups_mo = 0.0
+        effective_signups = 0.0
+        conversion_rate = 0.0
+        cannibalization_rate = 0.0
+        cost_per_free = 0.0
+        free_ticket_rate = 0.0
+    elif "self_serve_pro" in strategy or "hybrid_tier" in strategy:
+        arpu = arpu * 1.14
+        paid_acquisition_lift = 1.12
+        free_signups_mo = 0.0
+        effective_signups = 0.0
+        conversion_rate = 0.0
+        cannibalization_rate = 0.0
+        cost_per_free = 0.0
+        free_ticket_rate = 0.0
+    elif "proactive_csm" in strategy:
+        churn_rate = max(0.008, base_churn * 0.65)
+        base_infra = base_infra + 400.0
+        free_signups_mo = 0.0
+        effective_signups = 0.0
+        conversion_rate = 0.0
+        cannibalization_rate = 0.0
+        cost_per_free = 0.0
+        free_ticket_rate = 0.0
+        paid_acquisition_lift = 1.05
+    elif "automated_health" in strategy:
+        churn_rate = max(0.012, base_churn * 0.80)
+        free_signups_mo = 0.0
+        effective_signups = 0.0
+        conversion_rate = 0.0
+        cannibalization_rate = 0.0
+        cost_per_free = 0.0
+        free_ticket_rate = 0.0
+        paid_acquisition_lift = 1.02
+    elif "status_quo" in strategy:
+        free_signups_mo = 0.0
+        effective_signups = 0.0
+        conversion_rate = 0.0
+        cannibalization_rate = 0.0
+        cost_per_free = 0.0
+        free_ticket_rate = 0.0
+        paid_acquisition_lift = 1.0
+    elif strategy == "C_no_free_plan":
         # Strategy C: No free tier, but conversion optimization lift on existing funnel
         free_signups_mo = 0.0
         effective_signups = 0.0

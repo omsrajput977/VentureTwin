@@ -18,6 +18,7 @@ import { FailureInjector } from './components/FailureInjectorModal';
 import { DecisionReportView } from './components/DecisionReportView';
 import { CalibrationView } from './components/CalibrationView';
 import { CompanyGraphView } from './components/CompanyGraphView';
+import { ErrorBoundary } from './components/ErrorBoundary';
 
 export const App: React.FC = () => {
   const [activeTab, setActiveTab] = useState<'console' | 'report' | 'calibration' | 'graph'>('console');
@@ -189,22 +190,23 @@ export const App: React.FC = () => {
 
       {/* Main Content Area */}
       <main className="flex-1 max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-6 w-full space-y-6">
+        <ErrorBoundary onReset={() => setActiveTab('console')}>
         {/* Mode & Health Banners */}
-        {health?.llm_mode === 'real' && (
+        {((health?.llm_mode || '').trim() === 'real') && (
           <div className="bg-emerald-500/10 border border-emerald-500/30 rounded-xl p-3 flex items-center justify-between text-xs text-emerald-200">
             <div className="flex items-center gap-2">
               <span className="px-2 py-0.5 rounded bg-emerald-500/20 text-emerald-400 font-bold uppercase tracking-wider text-[10px]">
                 Live LLM Mode
               </span>
               <span>
-                Connected to {health.provider} ({health.model}) with live multi-agent orchestration.
+                Connected to {health?.provider} ({health?.model}) with live multi-agent orchestration.
               </span>
             </div>
             <span className="text-[11px] text-emerald-400/80">LLM_MODE=real</span>
           </div>
         )}
 
-        {health?.llm_mode === 'mock' && (
+        {((health?.llm_mode || '').trim() === 'mock') && (
           <div className="bg-amber-500/10 border border-amber-500/30 rounded-xl p-3 flex items-center justify-between text-xs text-amber-200">
             <div className="flex items-center gap-2">
               <span className="px-2 py-0.5 rounded bg-amber-500/20 text-amber-400 font-bold uppercase tracking-wider text-[10px]">
@@ -334,6 +336,7 @@ export const App: React.FC = () => {
 
         {/* Tab 4: Company Graph */}
         {activeTab === 'graph' && <CompanyGraphView />}
+        </ErrorBoundary>
       </main>
 
       {/* Finding Inspector Modal */}
@@ -342,9 +345,9 @@ export const App: React.FC = () => {
           <div className="bg-slate-900 border border-slate-800 rounded-2xl max-w-2xl w-full p-6 shadow-2xl space-y-4">
             <div className="flex items-center justify-between pb-3 border-b border-slate-800">
               <div className="flex items-center gap-2">
-                <span className="text-base font-bold text-white uppercase">{selectedFinding.agent} Finding</span>
+                <span className="text-base font-bold text-white uppercase">{selectedFinding.agent || 'Agent'} Finding</span>
                 <span className="text-xs px-2 py-0.5 rounded font-mono bg-slate-800 text-slate-300">
-                  {selectedFinding.task_id}
+                  {selectedFinding.task_id || ''}
                 </span>
               </div>
               <button
@@ -358,18 +361,18 @@ export const App: React.FC = () => {
             <div>
               <div className="text-xs font-semibold text-slate-400 uppercase tracking-wider mb-1">Core Claim</div>
               <div className="text-sm text-slate-200 bg-slate-950/60 p-3 rounded-xl border border-slate-800">
-                {selectedFinding.claim}
+                {selectedFinding.claim || 'No claim recorded'}
               </div>
             </div>
 
             <div className="flex items-center justify-between text-xs">
               <div>
                 <span className="text-slate-400">Recommendation:</span>{' '}
-                <span className="font-bold text-white capitalize">{selectedFinding.recommendation.replace(/_/g, ' ')}</span>
+                <span className="font-bold text-white capitalize">{String(selectedFinding.recommendation || 'proceed').replace(/_/g, ' ')}</span>
               </div>
               <div>
                 <span className="text-slate-400">Confidence:</span>{' '}
-                <span className="font-bold text-brand-400">{(selectedFinding.confidence * 100).toFixed(0)}%</span>
+                <span className="font-bold text-brand-400">{(Number(selectedFinding.confidence ?? 0.5) * 100).toFixed(0)}%</span>
               </div>
             </div>
 

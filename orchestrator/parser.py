@@ -66,18 +66,25 @@ def parse_decision_query(
                 constraints=effective_constraints
             )
 
-        if any(k in q_lower for k in ["price", "pricing", "raise", "increase", "cut", "discount", "tier", "billing", "rate"]):
-            obj = f"Evaluate revenue elasticity, customer churn risk, and runway implications of: {query}"
-        elif any(k in q_lower for k in ["churn", "retention", "cancel", "support"]):
+        if any(k in q_lower for k in ["free plan", "free tier", "freemium", "free user", "free account"]):
+            dec_type = "free_plan"
+            obj = f"Evaluate financial runway, acquisition velocity, infra strain, and cannibalization of launching a free tier."
+        elif any(k in q_lower for k in ["enterprise", "sla", "soc2", "dedicated"]):
+            dec_type = "enterprise_tier"
+            obj = f"Evaluate enterprise ACV uplift, dedicated SLA infrastructure costs, and customer success staffing for: {query}"
+        elif any(k in q_lower for k in ["churn", "retention", "cancel", "cs", "health score"]):
+            dec_type = "churn_reduction"
             obj = f"Evaluate retention dynamics, support load, and customer lifetime value for: {query}"
-        elif any(k in q_lower for k in ["infra", "cloud", "server", "cost", "burn"]):
-            obj = f"Evaluate cloud infrastructure unit costs, engineering capacity, and runway burn for: {query}"
+        elif any(k in q_lower for k in ["price", "pricing", "raise", "increase", "cut", "discount", "tier", "billing", "rate", "starter price"]):
+            dec_type = "price_increase"
+            obj = f"Evaluate revenue elasticity, customer churn risk, and runway implications of: {query}"
         else:
+            dec_type = "strategic_decision"
             obj = f"Evaluate financial runway, growth velocity, operational capacity, and unit economics for: {query}"
 
         return Decision(
             id=dec_id,
-            type="free_plan",
+            type=dec_type,
             question=query,
             objective=obj,
             constraints=effective_constraints

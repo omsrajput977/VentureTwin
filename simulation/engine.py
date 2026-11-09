@@ -99,10 +99,11 @@ def run_monte_carlo(
     company_data: Optional[Dict[str, Any]] = None,
     n_samples: int = 500,
     seed: int = 42,
-    assumptions: Optional[List[Assumption]] = None
+    assumptions: Optional[List[Assumption]] = None,
+    all_strategies: Optional[List[str]] = None
 ) -> Dict[str, Any]:
     """
-    Runs Monte Carlo simulation with local Generator across all 3 strategies.
+    Runs Monte Carlo simulation with local Generator across all strategies.
     Apples-to-apples comparison on shared sample draws.
     Computes p10/p50/p90, p_feasible, and dynamic p_best.
     """
@@ -119,7 +120,7 @@ def run_monte_carlo(
     else:
         reconciled = reconcile_assumptions(target)
 
-    all_strategies = ["A_limited_features", "B_usage_caps", "C_no_free_plan"]
+    active_strategies = all_strategies or ["A_limited_features", "B_usage_caps", "C_no_free_plan"]
     param_names = list(reconciled.params.keys())
 
     # Generate shared parameter draws
@@ -135,12 +136,12 @@ def run_monte_carlo(
         shared_draws.append(sampled_params)
 
     # Evaluate all strategies
-    strat_results = {s: {"net": [], "mrr": [], "runway": []} for s in all_strategies}
-    best_counts = {s: 0 for s in all_strategies}
+    strat_results = {s: {"net": [], "mrr": [], "runway": []} for s in active_strategies}
+    best_counts = {s: 0 for s in active_strategies}
 
     for draw in shared_draws:
         draw_outputs = {}
-        for s in all_strategies:
+        for s in active_strategies:
             out = run_saas_dynamics(months=12, strategy=s, params=draw, company_data=data)
             strat_results[s]["net"].append(out["net_contribution_12"])
             strat_results[s]["mrr"].append(out["mrr_12"])
@@ -149,7 +150,7 @@ def run_monte_carlo(
 
         # Find best strategy in this draw among feasible ones
         feasible_strats = []
-        for s in all_strategies:
+        for s in active_strategies:
             r12 = draw_outputs[s]["runway_months_12"]
             hist = draw_outputs[s].get("history", [])
             min_r = min((m["runway_months"] for m in hist[:12]), default=r12)
@@ -165,7 +166,7 @@ def run_monte_carlo(
     quantiles_summary = {}
     probabilities_summary = {}
 
-    for s in all_strategies:
+    for s in active_strategies:
         arr_net = np.array(strat_results[s]["net"])
         arr_mrr = np.array(strat_results[s]["mrr"])
         arr_runway = np.array(strat_results[s]["runway"])
@@ -209,7 +210,7 @@ def run_monte_carlo(
             "p_best": round(p_bst, 4)
         }
 
-    target_strat = strategy if strategy in strategies_summary else "B_usage_caps"
+    target_strat = strategy if strategy in strategies_summary else (active_strategies[0] if active_strategies else "B_usage_caps")
     target_summary = strategies_summary[target_strat]
 
     result = dict(target_summary)

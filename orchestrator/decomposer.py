@@ -4,7 +4,7 @@ from orchestrator.dag import TaskDAG, DAGValidationError
 def decompose_decision(decision: Decision) -> TaskDAG:
     dag = TaskDAG()
 
-    if decision.type != "free_plan":
+    if decision.type == "unsupported":
         raise DAGValidationError(
             f"VentureTwin v0.1 MVP specializes in Freemium / Free Plan packaging decisions. "
             f"Price change elasticity modeling is planned for v0.2 roadmap. (Query: {decision.question})"

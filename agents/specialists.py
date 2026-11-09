@@ -235,6 +235,7 @@ class BaseAnalysisAgent(BaseAgent):
 
         decision = context.get("decision") if context else None
         q_text = getattr(decision, "question", None) if decision else None
+        dec_type = getattr(decision, "type", "free_plan") if decision else "free_plan"
         prompt = self.build_prompt(tool_data, question=q_text)
 
         draft: AgentFindingDraft = await llm_call(
@@ -242,7 +243,12 @@ class BaseAnalysisAgent(BaseAgent):
             response_model=AgentFindingDraft,
             system_prompt=self.system_prompt,
             client=llm_client,
-            metadata={"agent_key": self.agent_key, "task_kind": "agent_analysis"}
+            metadata={
+                "agent_key": self.agent_key,
+                "task_kind": "agent_analysis",
+                "question": q_text,
+                "decision_type": dec_type
+            }
         )
 
         valid_assumptions = self.parse_and_validate(draft, company_data, benchmarks, context)

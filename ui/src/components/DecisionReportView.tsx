@@ -100,19 +100,19 @@ export const DecisionReportView: React.FC<Props> = ({ report, decisionId, onAppr
                   {strat.is_feasible ? 'FEASIBLE' : 'INFEASIBLE'}
                 </span>
               </div>
-              <div className="text-sm font-bold text-white capitalize">{strat.strategy.replace(/_/g, ' ')}</div>
+              <div className="text-sm font-bold text-white capitalize">{String(strat.strategy || 'strategy').replace(/_/g, ' ')}</div>
               <div className="mt-3 space-y-1 text-xs">
                 <div className="flex justify-between text-slate-400">
                   <span>12mo Net Contribution:</span>
-                  <span className="font-mono text-white">${strat.net_contribution_12.toLocaleString()}</span>
+                  <span className="font-mono text-white">${Number(strat.net_contribution_12 ?? 0).toLocaleString()}</span>
                 </div>
                 <div className="flex justify-between text-slate-400">
                   <span>12mo Cash Runway:</span>
-                  <span className="font-mono text-emerald-400">{strat.runway_months_12.toFixed(1)} mo</span>
+                  <span className="font-mono text-emerald-400">{Number(strat.runway_months_12 ?? 0).toFixed(1)} mo</span>
                 </div>
                 <div className="flex justify-between text-slate-400">
                   <span>12mo Gross Margin:</span>
-                  <span className="font-mono text-white">{(strat.gross_margin_12 * 100).toFixed(1)}%</span>
+                  <span className="font-mono text-white">{(Number(strat.gross_margin_12 ?? 0) * 100).toFixed(1)}%</span>
                 </div>
               </div>
               <div className="text-[11px] text-slate-500 mt-3 pt-2 border-t border-slate-800/80">
@@ -142,10 +142,10 @@ export const DecisionReportView: React.FC<Props> = ({ report, decisionId, onAppr
               <tbody className="divide-y divide-slate-800/60">
                 {scenarios.map((row: any, idx: number) => (
                   <tr key={idx} className="hover:bg-slate-800/30">
-                    <td className="p-2 font-sans font-medium text-slate-300">{row.strategy.split('_')[0]}</td>
-                    <td className="p-2 text-slate-400 capitalize">{row.scenario}</td>
-                    <td className="p-2 text-right text-white">${row.net_contribution_12.toLocaleString()}</td>
-                    <td className="p-2 text-right text-emerald-400">{row.runway_months_12.toFixed(1)}m</td>
+                    <td className="p-2 font-sans font-medium text-slate-300">{String(row.strategy || '').split('_')[0] || 'Strategy'}</td>
+                    <td className="p-2 text-slate-400 capitalize">{row.scenario || ''}</td>
+                    <td className="p-2 text-right text-white">${Number(row.net_contribution_12 ?? 0).toLocaleString()}</td>
+                    <td className="p-2 text-right text-emerald-400">{Number(row.runway_months_12 ?? 0).toFixed(1)}m</td>
                   </tr>
                 ))}
               </tbody>
@@ -159,18 +159,24 @@ export const DecisionReportView: React.FC<Props> = ({ report, decisionId, onAppr
             <h3 className="text-lg font-bold text-white mb-1">Sensitivity Analysis (Tornado)</h3>
             <p className="text-xs text-slate-400 mb-4">Ranked variance impact on 12-month net contribution</p>
             <div className="space-y-3">
-              {tornado.map((t: any) => (
-                <div key={t.assumption_name} className="bg-slate-950/60 p-2.5 rounded-lg border border-slate-800/60">
-                  <div className="flex justify-between text-xs mb-1">
-                    <span className="font-semibold text-white">#{t.impact_rank} {t.assumption_name.replace(/_/g, ' ')}</span>
-                    <span className="font-mono text-brand-400">Swing: ${t.swing.toLocaleString()}</span>
+              {tornado.map((t: any, idx: number) => {
+                const lowVal = t.net_contribution_at_low ?? t.margin_at_low ?? 0;
+                const highVal = t.net_contribution_at_high ?? t.margin_at_high ?? 0;
+                const name = String(t.assumption_name || t.param || `Param ${idx + 1}`).replace(/_/g, ' ');
+                const swingVal = Number(t.swing ?? 0).toLocaleString();
+                return (
+                  <div key={t.assumption_name || idx} className="bg-slate-950/60 p-2.5 rounded-lg border border-slate-800/60">
+                    <div className="flex justify-between text-xs mb-1">
+                      <span className="font-semibold text-white">#{t.impact_rank ?? idx + 1} {name}</span>
+                      <span className="font-mono text-brand-400">Swing: ${swingVal}</span>
+                    </div>
+                    <div className="flex justify-between text-[11px] text-slate-500 font-mono">
+                      <span>Low ({t.low_value ?? 0}): ${Number(lowVal).toLocaleString()}</span>
+                      <span>High ({t.high_value ?? 0}): ${Number(highVal).toLocaleString()}</span>
+                    </div>
                   </div>
-                  <div className="flex justify-between text-[11px] text-slate-500 font-mono">
-                    <span>Low ({t.low_value}): ${t.net_contribution_at_low.toLocaleString()}</span>
-                    <span>High ({t.high_value}): ${t.net_contribution_at_high.toLocaleString()}</span>
-                  </div>
-                </div>
-              ))}
+                );
+              })}
             </div>
           </div>
 
@@ -189,23 +195,23 @@ export const DecisionReportView: React.FC<Props> = ({ report, decisionId, onAppr
         <p className="text-xs text-slate-400 mb-4">Disagreements between agents resolved through deterministic simulation runs</p>
 
         <div className="space-y-3">
-          {conflicts.map((c: any) => (
-            <div key={c.id} className="p-4 rounded-xl bg-slate-950/80 border border-slate-800">
+          {conflicts.map((c: any, idx: number) => (
+            <div key={c.id || idx} className="p-4 rounded-xl bg-slate-950/80 border border-slate-800">
               <div className="flex items-center justify-between mb-2">
                 <div className="flex items-center gap-2">
                   <span className="px-2 py-0.5 text-[10px] bg-purple-500/20 text-purple-300 border border-purple-500/30 rounded font-bold uppercase">
-                    {c.type.replace(/_/g, ' ')}
+                    {String(c.type || 'Conflict').replace(/_/g, ' ')}
                   </span>
                   <span className="text-xs text-white font-semibold">
-                    {c.agents.join(' vs ')} on {c.disputed_item}
+                    {Array.isArray(c.agents) ? c.agents.join(' vs ') : String(c.agents || 'Agents')} on {c.disputed_item || 'parameter'}
                   </span>
                 </div>
                 <span className="text-[10px] font-mono text-slate-500">
-                  Simulations: {c.simulation_ids?.join(', ')}
+                  Simulations: {Array.isArray(c.simulation_ids) ? c.simulation_ids.join(', ') : ''}
                 </span>
               </div>
               <div className="text-xs text-slate-300 leading-relaxed bg-slate-900/60 p-3 rounded border border-slate-800/60">
-                {c.resolution}
+                {c.resolution || 'Resolved by empirical simulation comparison.'}
               </div>
             </div>
           ))}
@@ -239,16 +245,16 @@ export const DecisionReportView: React.FC<Props> = ({ report, decisionId, onAppr
 
                 return (
                   <tr key={idx} className="hover:bg-slate-800/30">
-                    <td className="p-2.5 font-medium text-white">{asm.name.replace(/_/g, ' ')}</td>
+                    <td className="p-2.5 font-medium text-white">{String(asm.name || 'Assumption').replace(/_/g, ' ')}</td>
                     <td className="p-2.5 font-mono text-slate-300">
-                      [{asm.low} / <span className="font-bold text-white">{asm.base}</span> / {asm.high}] {asm.unit}
+                      [{asm.low ?? 0} / <span className="font-bold text-white">{asm.base ?? 0}</span> / {asm.high ?? 0}] {asm.unit || ''}
                     </td>
                     <td className="p-2.5">
                       <span className={`px-2 py-0.5 text-[10px] rounded-full font-semibold ${badgeColor}`}>
-                        {asm.provenance}
+                        {asm.provenance || 'ai_assumption'}
                       </span>
                     </td>
-                    <td className="p-2.5 text-slate-400">{asm.proposed_by}</td>
+                    <td className="p-2.5 text-slate-400">{asm.proposed_by || 'Agent'}</td>
                     <td className="p-2.5 text-center">
                       {asm.challenged_by_skeptic ? (
                         <span className="text-amber-400 font-bold" title="Challenged and confidence adjusted by Skeptic">Challenged</span>
@@ -257,7 +263,7 @@ export const DecisionReportView: React.FC<Props> = ({ report, decisionId, onAppr
                       )}
                     </td>
                     <td className="p-2.5 text-right font-mono text-slate-300">
-                      {(asm.confidence * 100).toFixed(0)}%
+                      {(Number(asm.confidence ?? 0.5) * 100).toFixed(0)}%
                     </td>
                   </tr>
                 );
@@ -278,11 +284,11 @@ export const DecisionReportView: React.FC<Props> = ({ report, decisionId, onAppr
             return (
               <div key={idx} className="p-3 bg-slate-950/60 rounded-xl border border-slate-800 flex items-start gap-3">
                 <span className={`px-2 py-0.5 text-[10px] font-bold rounded uppercase mt-0.5 ${isPassed ? 'bg-emerald-500/20 text-emerald-400 border border-emerald-500/30' : 'bg-rose-500/20 text-rose-400 border border-rose-500/30'}`}>
-                  {v.status}
+                  {v.status || 'unknown'}
                 </span>
                 <div>
-                  <div className="text-xs font-semibold text-white capitalize">{v.check_name.replace(/_/g, ' ')}</div>
-                  <div className="text-[11px] text-slate-400 mt-0.5">{v.detail}</div>
+                  <div className="text-xs font-semibold text-white capitalize">{String(v.check_name || 'check').replace(/_/g, ' ')}</div>
+                  <div className="text-[11px] text-slate-400 mt-0.5">{v.detail || ''}</div>
                 </div>
               </div>
             );
