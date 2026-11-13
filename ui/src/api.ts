@@ -105,7 +105,14 @@ export async function injectFailure(
     headers: { 'Content-Type': 'application/json' },
     body: JSON.stringify({ agent, mode, persist, fail_attempts: failAttempts })
   });
-  if (!res.ok) throw new Error('Failed to inject failure');
+  if (!res.ok) {
+    let msg = 'Failed to inject failure';
+    try {
+      const err = await res.json();
+      if (err.detail) msg = err.detail;
+    } catch {}
+    throw new Error(msg);
+  }
   return res.json();
 }
 

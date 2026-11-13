@@ -239,7 +239,8 @@ class Event(BaseModel):
         "verification_passed",
         "verification_failed",
         "report_ready",
-        "workflow_failed"
+        "workflow_failed",
+        "failure_injected"
     ]
     agent: str
     payload: Dict[str, Any] = Field(default_factory=dict)

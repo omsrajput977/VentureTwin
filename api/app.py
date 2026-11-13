@@ -274,7 +274,13 @@ async def inject_failure(decision_id: str, req: FailureInjectionRequest):
             task.status = "retrying"
             task.attempts = 0
             supervisor.current_state.findings = [f for f in supervisor.current_state.findings if f.task_id != target_task_id]
-            asyncio.create_task(supervisor._run_task_with_recovery(task, supervisor.current_state))
+            async def _rerun_task():
+                res = await supervisor._run_task_with_recovery(task, supervisor.current_state)
+                if res is not None:
+                    supervisor.current_state.mark_task_done(task.id)
+                    if supervisor.current_state.report is not None:
+                        await supervisor._run_report_finalize_task(task, supervisor.current_state)
+            asyncio.create_task(_rerun_task())
 
     return {
         "decision_id": decision_id,
