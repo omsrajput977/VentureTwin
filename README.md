@@ -17,7 +17,9 @@
 <p align="center">
   <a href="#-quick-start"><b>🚀 Quick Start</b></a> •
   <a href="#-the-30-second-pitch"><b>✨ 30-Second Pitch</b></a> •
-  <a href="docs/ARCHITECTURE.md"><b>📖 Architecture Spec (2,300+ Lines)</b></a> •
+  <a href="docs/PITCH.md"><b>🎯 Executive Pitch & Judge Q&A</b></a> •
+  <a href="docs/TECHSTACK.md"><b>⚙️ Tech Stack & Protocols</b></a> •
+  <a href="docs/ARCHITECTURE.md"><b>📖 Full Architecture (2,300+ Lines)</b></a> •
   <a href="#-see-it-in-action"><b>🖥️ UI Tour</b></a> •
   <a href="#-meet-the-agents"><b>🤖 Agent Swarm</b></a> •
   <a href="#-conflicts-resolved-by-simulation-not-voting"><b>⚡ Conflict Engine</b></a> •
@@ -26,8 +28,10 @@
 
 ---
 
-> 📖 **Looking for the exhaustive technical reference?**  
-> Read the complete **[`docs/ARCHITECTURE.md`](docs/ARCHITECTURE.md)** for a 2,366-line deep dive into every class, schema, AST verification script, SQLite checkpoint mechanism, and 40+ engineering FAQs.
+> 📖 **Key Documentation Hub:**  
+> • **[`docs/PITCH.md`](docs/PITCH.md)** — **Executive Pitch & Judge Q&A Guide:** 3-minute plain-English project walkthrough with anticipated judge questions and sharp answers.  
+> • **[`docs/TECHSTACK.md`](docs/TECHSTACK.md)** — **Tech Stack & Engineering Tradeoffs:** Detailed justifications, agent communication protocols (`Pydantic` + `EventBus`), and empirical simulation conflict resolution.  
+> • **[`docs/ARCHITECTURE.md`](docs/ARCHITECTURE.md)** — **Complete Technical Specification:** 2,366-line deep dive into every class, schema, AST verification script, SQLite checkpoint mechanism, and 40+ engineering FAQs.
 
 ---
 
@@ -555,6 +559,8 @@ VentureTwin/
 │   ├── model_config.json        # Simulation parameter ranges and constraints
 │   └── known_good_run.json      # Gold-standard reference run fixture
 ├── docs/                        # Comprehensive documentation & visual assets
+│   ├── PITCH.md                 # 3-minute executive pitch & judge Q&A guide
+│   ├── TECHSTACK.md             # Tech stack justifications, protocols & empirical conflict resolution
 │   ├── ARCHITECTURE.md          # Complete 2,366-line system specification
 │   └── assets/                  # Hero banner, architecture poster, SVG charts & screenshots
 ├── llm/                         # Multi-provider LLM abstraction layer
