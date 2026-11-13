@@ -268,3 +268,4 @@ To ensure 100% data integrity, VentureTwin executes **7 deterministic algorithmi
 ### Q5: "What happens if the server crashes in the middle of a 12-task simulation run?"
 > **Answer:**  
 > *"VentureTwin includes transactional state persistence via `SQLiteCheckpointer`. After every completed DAG task, the workflow state is checkpointed to SQLite. Upon restart, the engine queries the checkpoint, identifies all completed node IDs, and resumes execution immediately from the ready tasks without re-running earlier completed agent evaluations."*
+

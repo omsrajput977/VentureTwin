@@ -108,3 +108,4 @@
 2. **Execution Graph (15s):** Point to Stage 1. Watch CFO, Growth, CTO, Customer, and Product evaluate in real-time telemetry over SSE. Click on any completed node to inspect raw assumptions.
 3. **Chaos Injection (15s):** Open the Chaos Testing panel. Inject a transient crash into CTO mid-run. Show the live event stream emit `agent_failed`, followed by autonomous `recovery_started (retry)` and the node completing as `Done (Retry 1)`.
 4. **Decision Report (20s):** Switch to the Decision Report tab. Highlight the **Scenario Outcome Matrix**, the **Tornado Sensitivity Analysis**, the **Empirical Conflict Resolution** table, the **7/7 Algorithmic Audits Passed**, and execute the **Executive Sign-Off Gate** (Approve / Reject).
+
