@@ -35,6 +35,15 @@ export const App: React.FC = () => {
   const [report, setReport] = useState<any>(null);
   const [selectedFinding, setSelectedFinding] = useState<FindingItem | null>(null);
 
+  const hasGivenPrompt = Boolean(currentDecisionId);
+
+  // Guard tabs: if user has not given a prompt, restrict to console
+  useEffect(() => {
+    if (!hasGivenPrompt && activeTab !== 'console') {
+      setActiveTab('console');
+    }
+  }, [hasGivenPrompt, activeTab]);
+
   // Load initial company snapshot and health
   useEffect(() => {
     fetchCompany().then(setCompany).catch(console.error);
@@ -144,42 +153,74 @@ export const App: React.FC = () => {
               Decision Console
             </button>
             <button
+              disabled={!hasGivenPrompt || !report}
               onClick={async () => {
+                if (!hasGivenPrompt || !report) return;
                 setActiveTab('report');
-                if (!report) {
+                if (!report && currentDecisionId) {
                   try {
-                    let rep = null;
-                    if (currentDecisionId) {
-                      try { rep = await fetchDecisionReport(currentDecisionId); } catch {}
-                    }
-                    if (!rep) {
-                      const res = await fetch('/api/reports/latest');
-                      if (res.ok) rep = await res.json();
-                    }
+                    const rep = await fetchDecisionReport(currentDecisionId);
                     if (rep) setReport(rep);
                   } catch (e) {
                     console.warn('Report fetch notice:', e);
                   }
                 }
               }}
+              title={
+                !hasGivenPrompt
+                  ? 'Please submit a prompt in the Decision Console first'
+                  : !report
+                  ? 'Report will be available once the simulation completes'
+                  : 'View verified decision report'
+              }
               className={`px-3 py-1.5 rounded-lg text-xs font-medium transition ${
-                activeTab === 'report' ? 'bg-brand-500 text-slate-950 font-bold shadow' : 'text-slate-400 hover:text-white'
+                !hasGivenPrompt || !report
+                  ? 'opacity-40 cursor-not-allowed text-slate-600'
+                  : activeTab === 'report'
+                  ? 'bg-brand-500 text-slate-950 font-bold shadow'
+                  : 'text-slate-400 hover:text-white'
               }`}
             >
-              Decision Report {report && '✓'}
+              Decision Report {report ? '✓' : workflowStatus === 'running' ? '⏳' : ''}
             </button>
             <button
-              onClick={() => setActiveTab('calibration')}
+              disabled={!hasGivenPrompt}
+              onClick={() => {
+                if (!hasGivenPrompt) return;
+                setActiveTab('calibration');
+              }}
+              title={
+                !hasGivenPrompt
+                  ? 'Please submit a prompt in the Decision Console first'
+                  : 'View decision calibration & outcome memory'
+              }
               className={`px-3 py-1.5 rounded-lg text-xs font-medium transition ${
-                activeTab === 'calibration' ? 'bg-brand-500 text-slate-950 font-bold shadow' : 'text-slate-400 hover:text-white'
+                !hasGivenPrompt
+                  ? 'opacity-40 cursor-not-allowed text-slate-600'
+                  : activeTab === 'calibration'
+                  ? 'bg-brand-500 text-slate-950 font-bold shadow'
+                  : 'text-slate-400 hover:text-white'
               }`}
             >
               Calibration & Memory
             </button>
             <button
-              onClick={() => setActiveTab('graph')}
+              disabled={!hasGivenPrompt}
+              onClick={() => {
+                if (!hasGivenPrompt) return;
+                setActiveTab('graph');
+              }}
+              title={
+                !hasGivenPrompt
+                  ? 'Please submit a prompt in the Decision Console first'
+                  : 'View company dependency graph'
+              }
               className={`px-3 py-1.5 rounded-lg text-xs font-medium transition ${
-                activeTab === 'graph' ? 'bg-brand-500 text-slate-950 font-bold shadow' : 'text-slate-400 hover:text-white'
+                !hasGivenPrompt
+                  ? 'opacity-40 cursor-not-allowed text-slate-600'
+                  : activeTab === 'graph'
+                  ? 'bg-brand-500 text-slate-950 font-bold shadow'
+                  : 'text-slate-400 hover:text-white'
               }`}
             >
               Company Graph
@@ -324,18 +365,78 @@ export const App: React.FC = () => {
 
         {/* Tab 2: Decision Report */}
         {activeTab === 'report' && (
-          <DecisionReportView
-            report={report}
-            decisionId={currentDecisionId || ''}
-            onApprovalDone={() => setActiveTab('calibration')}
-          />
+          hasGivenPrompt && report ? (
+            <DecisionReportView
+              report={report}
+              decisionId={currentDecisionId || ''}
+              onApprovalDone={() => setActiveTab('calibration')}
+            />
+          ) : (
+            <div className="bg-slate-900/90 border border-slate-800 rounded-2xl p-12 text-center shadow-xl space-y-4">
+              <div className="w-12 h-12 mx-auto rounded-full bg-slate-800 flex items-center justify-center text-slate-400 text-xl font-bold">
+                🔒
+              </div>
+              <h3 className="text-lg font-bold text-white">Decision Report Unavailable</h3>
+              <p className="text-sm text-slate-400 max-w-md mx-auto">
+                {!hasGivenPrompt
+                  ? 'Please submit a strategic question prompt in the Decision Console first to generate a decision report.'
+                  : 'Simulation is currently running. The verified decision report will be available once all agent analysis waves complete.'}
+              </p>
+              <button
+                onClick={() => setActiveTab('console')}
+                className="px-5 py-2 bg-brand-500 hover:bg-brand-400 text-slate-950 font-bold text-xs rounded-xl shadow-lg transition"
+              >
+                Go to Decision Console
+              </button>
+            </div>
+          )
         )}
 
         {/* Tab 3: Calibration & Outcome Memory */}
-        {activeTab === 'calibration' && <CalibrationView />}
+        {activeTab === 'calibration' && (
+          hasGivenPrompt ? (
+            <CalibrationView />
+          ) : (
+            <div className="bg-slate-900/90 border border-slate-800 rounded-2xl p-12 text-center shadow-xl space-y-4">
+              <div className="w-12 h-12 mx-auto rounded-full bg-slate-800 flex items-center justify-center text-slate-400 text-xl font-bold">
+                🔒
+              </div>
+              <h3 className="text-lg font-bold text-white">Calibration &amp; Memory Locked</h3>
+              <p className="text-sm text-slate-400 max-w-md mx-auto">
+                Please submit a strategic question prompt in the Decision Console first to initialize simulation telemetry and calibration memory.
+              </p>
+              <button
+                onClick={() => setActiveTab('console')}
+                className="px-5 py-2 bg-brand-500 hover:bg-brand-400 text-slate-950 font-bold text-xs rounded-xl shadow-lg transition"
+              >
+                Go to Decision Console
+              </button>
+            </div>
+          )
+        )}
 
         {/* Tab 4: Company Graph */}
-        {activeTab === 'graph' && <CompanyGraphView />}
+        {activeTab === 'graph' && (
+          hasGivenPrompt ? (
+            <CompanyGraphView />
+          ) : (
+            <div className="bg-slate-900/90 border border-slate-800 rounded-2xl p-12 text-center shadow-xl space-y-4">
+              <div className="w-12 h-12 mx-auto rounded-full bg-slate-800 flex items-center justify-center text-slate-400 text-xl font-bold">
+                🔒
+              </div>
+              <h3 className="text-lg font-bold text-white">Company Graph Locked</h3>
+              <p className="text-sm text-slate-400 max-w-md mx-auto">
+                Please submit a strategic question prompt in the Decision Console first to inspect the company dependency graph for your scenario.
+              </p>
+              <button
+                onClick={() => setActiveTab('console')}
+                className="px-5 py-2 bg-brand-500 hover:bg-brand-400 text-slate-950 font-bold text-xs rounded-xl shadow-lg transition"
+              >
+                Go to Decision Console
+              </button>
+            </div>
+          )
+        )}
         </ErrorBoundary>
       </main>
 
