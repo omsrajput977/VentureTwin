@@ -90,6 +90,13 @@ dist_assets = os.path.join(os.path.dirname(__file__), "..", "ui", "dist", "asset
 if os.path.exists(dist_assets):
     app.mount("/assets", StaticFiles(directory=dist_assets), name="assets")
 
+dist_agents = os.path.join(os.path.dirname(__file__), "..", "ui", "dist", "agents")
+public_agents = os.path.join(os.path.dirname(__file__), "..", "ui", "public", "agents")
+if os.path.exists(dist_agents):
+    app.mount("/agents", StaticFiles(directory=dist_agents), name="agents")
+elif os.path.exists(public_agents):
+    app.mount("/agents", StaticFiles(directory=public_agents), name="agents")
+
 @app.get("/api/health", response_model=HealthStatus)
 async def health(probe: bool = False):
     import time

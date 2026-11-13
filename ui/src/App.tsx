@@ -12,13 +12,13 @@ import {
   EventItem
 } from './api';
 import { CompanySnapshotCard } from './components/CompanySnapshotCard';
-import { ExecutionGraph } from './components/ExecutionGraph';
-import { EventFeed } from './components/EventFeed';
-import { FailureInjector, StagedFault } from './components/FailureInjectorModal';
+import { MissionControl } from './components/mission/MissionControl';
+import { StagedFault } from './components/FailureInjectorModal';
 import { DecisionReportView } from './components/DecisionReportView';
 import { CalibrationView } from './components/CalibrationView';
 import { CompanyGraphView } from './components/CompanyGraphView';
 import { ErrorBoundary } from './components/ErrorBoundary';
+import { useEventChoreographer } from './orchestration/useEventChoreographer';
 
 export const App: React.FC = () => {
   const [activeTab, setActiveTab] = useState<'console' | 'report' | 'calibration' | 'graph'>('console');
@@ -35,8 +35,21 @@ export const App: React.FC = () => {
   const [report, setReport] = useState<any>(null);
   const [selectedFinding, setSelectedFinding] = useState<FindingItem | null>(null);
   const [stagedFault, setStagedFault] = useState<StagedFault | null>(null);
+  const [playbackSpeed, setPlaybackSpeed] = useState<'cinematic' | 'instant'>('cinematic');
 
   const hasGivenPrompt = Boolean(currentDecisionId);
+  const isRunMode = Boolean(currentDecisionId && workflowStatus !== 'idle');
+  const isRealMode = (health?.llm_mode || '').trim() === 'real';
+
+  // Event Choreographer for pacing live events
+  const {
+    choreographedEvents,
+    skipToReport,
+    reset: resetChoreographer
+  } = useEventChoreographer(events, {
+    speed: playbackSpeed,
+    isRealMode
+  });
 
   // Guard tabs: if user has not given a prompt, restrict to console
   useEffect(() => {
@@ -125,6 +138,7 @@ export const App: React.FC = () => {
       setFindings([]);
       setEvents([]);
       setReport(null);
+      resetChoreographer();
 
       const res = await submitDecision(q, undefined, stagedFault || undefined);
       setCurrentDecisionId(res.decision_id);
@@ -136,11 +150,34 @@ export const App: React.FC = () => {
     }
   };
 
+  const handleResetToNewQuestion = () => {
+    setCurrentDecisionId(null);
+    setWorkflowStatus('idle');
+    setTasks({});
+    setFindings([]);
+    setEvents([]);
+    setReport(null);
+    setSelectedFinding(null);
+    resetChoreographer();
+  };
+
   const handleInjectFault = async (agent: string, mode: string, persist: boolean = false, failAttempts: number = 1) => {
     if (!currentDecisionId) {
       throw new Error('No active decision running. Please submit a question first.');
     }
     await injectFailure(currentDecisionId, agent, mode, persist, failAttempts);
+  };
+
+  const handleOpenReport = async () => {
+    setActiveTab('report');
+    if (!report && currentDecisionId) {
+      try {
+        const rep = await fetchDecisionReport(currentDecisionId);
+        if (rep) setReport(rep);
+      } catch (e) {
+        console.warn('Report fetch notice:', e);
+      }
+    }
   };
 
   return (
@@ -174,18 +211,7 @@ export const App: React.FC = () => {
             </button>
             <button
               disabled={!hasGivenPrompt || (workflowStatus === 'running' && !report)}
-              onClick={async () => {
-                if (!hasGivenPrompt) return;
-                setActiveTab('report');
-                if (!report && currentDecisionId) {
-                  try {
-                    const rep = await fetchDecisionReport(currentDecisionId);
-                    if (rep) setReport(rep);
-                  } catch (e) {
-                    console.warn('Report fetch notice:', e);
-                  }
-                }
-              }}
+              onClick={handleOpenReport}
               title={
                 !hasGivenPrompt
                   ? 'Please submit a prompt in the Decision Console first'
@@ -250,11 +276,11 @@ export const App: React.FC = () => {
       </header>
 
       {/* Main Content Area */}
-      <main className="flex-1 max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-6 w-full space-y-6">
+      <main className="flex-1 max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-5 w-full space-y-4">
         <ErrorBoundary onReset={() => setActiveTab('console')}>
         {/* Mode & Health Banners */}
         {((health?.llm_mode || '').trim() === 'real') && (
-          <div className="bg-emerald-500/10 border border-emerald-500/30 rounded-xl p-3 flex items-center justify-between text-xs text-emerald-200">
+          <div className="bg-emerald-500/10 border border-emerald-500/30 rounded-xl p-2.5 flex items-center justify-between text-xs text-emerald-200">
             <div className="flex items-center gap-2">
               <span className="px-2 py-0.5 rounded bg-emerald-500/20 text-emerald-400 font-bold uppercase tracking-wider text-[10px]">
                 Live LLM Mode
@@ -268,7 +294,7 @@ export const App: React.FC = () => {
         )}
 
         {((health?.llm_mode || '').trim() === 'mock') && (
-          <div className="bg-amber-500/10 border border-amber-500/30 rounded-xl p-3 flex items-center justify-between text-xs text-amber-200">
+          <div className="bg-amber-500/10 border border-amber-500/30 rounded-xl p-2.5 flex items-center justify-between text-xs text-amber-200">
             <div className="flex items-center gap-2">
               <span className="px-2 py-0.5 rounded bg-amber-500/20 text-amber-400 font-bold uppercase tracking-wider text-[10px]">
                 Deterministic Mock Mode
@@ -282,7 +308,7 @@ export const App: React.FC = () => {
         )}
 
         {workflowStatus === 'degraded' && (
-          <div className="bg-orange-500/10 border border-orange-500/30 rounded-xl p-3 flex items-center justify-between text-xs text-orange-200">
+          <div className="bg-orange-500/10 border border-orange-500/30 rounded-xl p-2.5 flex items-center justify-between text-xs text-orange-200">
             <div className="flex items-center gap-2">
               <span className="px-2 py-0.5 rounded bg-orange-500/20 text-orange-400 font-bold uppercase tracking-wider text-[10px]">
                 Degraded Execution
@@ -295,102 +321,139 @@ export const App: React.FC = () => {
           </div>
         )}
 
-        {/* Persistent Company Snapshot Card */}
-        <CompanySnapshotCard snapshot={company} />
+        {/* Company Snapshot Card: Compact ticker in run mode, full card in idle */}
+        <CompanySnapshotCard snapshot={company} compact={isRunMode} />
 
-        {/* Tab 1: Decision Console */}
+        {/* Tab 1: Decision Console (Mission Control) */}
         {activeTab === 'console' && (
-          <div className="space-y-6">
-            {/* Decision Intake Box */}
-            <div className="bg-slate-900/90 border border-slate-800 rounded-2xl p-5 shadow-xl">
-              <div className="flex items-center justify-between mb-2">
-                <label className="block text-xs font-semibold uppercase tracking-wider text-slate-400">
-                  Strategic Question Intake
-                </label>
-                {stagedFault && (
-                  <span className="text-[11px] font-semibold text-rose-400 bg-rose-500/10 border border-rose-500/30 px-2.5 py-0.5 rounded-full flex items-center gap-1.5 animate-pulse">
-                    <span>⚡ Chaos Armed:</span>
-                    <span className="font-mono uppercase font-bold">{stagedFault.agent}</span>
-                    <span>({stagedFault.mode})</span>
+          <div className="space-y-4">
+            {/* Run mode: Collapsed slim active query bar */}
+            {isRunMode ? (
+              <div className="bg-slate-900/90 border border-slate-800 rounded-xl px-4 py-2.5 shadow-md flex items-center justify-between gap-3">
+                <div className="flex items-center gap-2.5 overflow-hidden">
+                  <span className="text-[10px] font-mono uppercase tracking-wider text-slate-500 shrink-0 font-bold">
+                    Active Flight Plan:
                   </span>
-                )}
+                  <span className="text-xs font-semibold text-white truncate font-sans">
+                    &ldquo;{decisionQuery}&rdquo;
+                  </span>
+                  {workflowStatus === 'running' && (
+                    <span className="flex items-center gap-1 text-[10px] font-mono text-teal-400 bg-teal-500/10 px-2 py-0.5 rounded border border-teal-500/30 shrink-0">
+                      <span className="w-1.5 h-1.5 rounded-full bg-teal-400 animate-ping" />
+                      Running Orchestration
+                    </span>
+                  )}
+                  {workflowStatus === 'completed' && (
+                    <span className="text-[10px] font-mono text-emerald-400 bg-emerald-500/10 px-2 py-0.5 rounded border border-emerald-500/30 shrink-0">
+                      ✓ Complete
+                    </span>
+                  )}
+                </div>
+                <div className="flex items-center gap-2 shrink-0">
+                  {stagedFault && (
+                    <span className="text-[10px] font-mono text-rose-400 bg-rose-500/10 border border-rose-500/30 px-2 py-0.5 rounded-full">
+                      ⚡ Chaos Armed: {stagedFault.agent}
+                    </span>
+                  )}
+                  <button
+                    onClick={handleResetToNewQuestion}
+                    className="px-3 py-1 bg-slate-800 hover:bg-slate-700 text-slate-200 text-xs font-medium rounded-lg border border-slate-700 transition cursor-pointer"
+                  >
+                    + New Question
+                  </button>
+                </div>
               </div>
-              <div className="flex flex-col sm:flex-row gap-3">
-                <input
-                  type="text"
-                  value={decisionQuery}
-                  onChange={(e) => setDecisionQuery(e.target.value)}
-                  placeholder="Ask any strategic SaaS question (e.g. Should we raise price by 20%?)"
-                  className="flex-1 bg-slate-950 border border-slate-800 rounded-xl px-4 py-2.5 text-sm text-white focus:outline-none focus:border-brand-500"
-                />
-                <button
-                  onClick={() => handleLaunchDecision()}
-                  disabled={workflowStatus === 'running'}
-                  className="px-6 py-2.5 bg-gradient-to-r from-brand-500 to-emerald-500 hover:from-brand-600 hover:to-emerald-600 text-slate-950 font-bold rounded-xl text-sm transition shadow-lg shadow-brand-500/20 disabled:opacity-50 shrink-0"
-                >
-                  {workflowStatus === 'running' ? 'Simulating...' : 'Run Simulation'}
-                </button>
-              </div>
+            ) : (
+              /* Idle mode: Strategic Question Intake Box */
+              <div className="bg-slate-900/90 border border-slate-800 rounded-2xl p-5 shadow-xl">
+                <div className="flex items-center justify-between mb-2">
+                  <label className="block text-xs font-semibold uppercase tracking-wider text-slate-400">
+                    Strategic Question Intake
+                  </label>
+                  {stagedFault && (
+                    <span className="text-[11px] font-semibold text-rose-400 bg-rose-500/10 border border-rose-500/30 px-2.5 py-0.5 rounded-full flex items-center gap-1.5 animate-pulse">
+                      <span>⚡ Chaos Armed:</span>
+                      <span className="font-mono uppercase font-bold">{stagedFault.agent}</span>
+                      <span>({stagedFault.mode})</span>
+                    </span>
+                  )}
+                </div>
+                <div className="flex flex-col sm:flex-row gap-3">
+                  <input
+                    type="text"
+                    value={decisionQuery}
+                    onChange={(e) => setDecisionQuery(e.target.value)}
+                    placeholder="Ask any strategic SaaS question (e.g. Should we raise price by 20%?)"
+                    className="flex-1 bg-slate-950 border border-slate-800 rounded-xl px-4 py-2.5 text-sm text-white focus:outline-none focus:border-brand-500"
+                  />
+                  <button
+                    onClick={() => handleLaunchDecision()}
+                    disabled={workflowStatus === 'running'}
+                    className="px-6 py-2.5 bg-gradient-to-r from-brand-500 to-emerald-500 hover:from-brand-600 hover:to-emerald-600 text-slate-950 font-bold rounded-xl text-sm transition shadow-lg shadow-brand-500/20 disabled:opacity-50 shrink-0 cursor-pointer"
+                  >
+                    {workflowStatus === 'running' ? 'Simulating...' : 'Run Simulation'}
+                  </button>
+                </div>
 
-              {/* Example Question Chips */}
-              <div className="flex flex-wrap items-center gap-2 mt-3 text-xs text-slate-400">
-                <span className="text-[11px] font-medium text-slate-500">Example queries:</span>
-                <button
-                  onClick={() => {
-                    setDecisionQuery('Should we launch a free plan?');
-                    handleLaunchDecision('Should we launch a free plan?');
-                  }}
-                  className="px-2.5 py-1 bg-slate-800/80 hover:bg-slate-800 text-slate-300 rounded-lg text-[11px] transition"
-                >
-                  Should we launch a free plan?
-                </button>
-                <button
-                  onClick={() => {
-                    setDecisionQuery('Should we raise Starter price by 20%?');
-                    handleLaunchDecision('Should we raise Starter price by 20%?');
-                  }}
-                  className="px-2.5 py-1 bg-slate-800/80 hover:bg-slate-800 text-slate-300 rounded-lg text-[11px] transition"
-                >
-                  Should we raise Starter price by 20%?
-                </button>
-                <button
-                  onClick={() => {
-                    setDecisionQuery('Can we introduce an enterprise tier with custom SLAs?');
-                    handleLaunchDecision('Can we introduce an enterprise tier with custom SLAs?');
-                  }}
-                  className="px-2.5 py-1 bg-slate-800/80 hover:bg-slate-800 text-slate-300 rounded-lg text-[11px] transition"
-                >
-                  Can we introduce an enterprise tier?
-                </button>
-                <button
-                  onClick={() => {
-                    setDecisionQuery('How do we reduce customer churn and preserve runway?');
-                    handleLaunchDecision('How do we reduce customer churn and preserve runway?');
-                  }}
-                  className="px-2.5 py-1 bg-slate-800/80 hover:bg-slate-800 text-slate-300 rounded-lg text-[11px] transition"
-                >
-                  How do we reduce customer churn?
-                </button>
+                {/* Example Question Chips */}
+                <div className="flex flex-wrap items-center gap-2 mt-3 text-xs text-slate-400">
+                  <span className="text-[11px] font-medium text-slate-500">Example queries:</span>
+                  <button
+                    onClick={() => {
+                      setDecisionQuery('Should we launch a free plan?');
+                      handleLaunchDecision('Should we launch a free plan?');
+                    }}
+                    className="px-2.5 py-1 bg-slate-800/80 hover:bg-slate-800 text-slate-300 rounded-lg text-[11px] transition cursor-pointer"
+                  >
+                    Should we launch a free plan?
+                  </button>
+                  <button
+                    onClick={() => {
+                      setDecisionQuery('Should we raise Starter price by 20%?');
+                      handleLaunchDecision('Should we raise Starter price by 20%?');
+                    }}
+                    className="px-2.5 py-1 bg-slate-800/80 hover:bg-slate-800 text-slate-300 rounded-lg text-[11px] transition cursor-pointer"
+                  >
+                    Should we raise Starter price by 20%?
+                  </button>
+                  <button
+                    onClick={() => {
+                      setDecisionQuery('Can we introduce an enterprise tier with custom SLAs?');
+                      handleLaunchDecision('Can we introduce an enterprise tier with custom SLAs?');
+                    }}
+                    className="px-2.5 py-1 bg-slate-800/80 hover:bg-slate-800 text-slate-300 rounded-lg text-[11px] transition cursor-pointer"
+                  >
+                    Can we introduce an enterprise tier?
+                  </button>
+                  <button
+                    onClick={() => {
+                      setDecisionQuery('How do we reduce customer churn and preserve runway?');
+                      handleLaunchDecision('How do we reduce customer churn and preserve runway?');
+                    }}
+                    className="px-2.5 py-1 bg-slate-800/80 hover:bg-slate-800 text-slate-300 rounded-lg text-[11px] transition cursor-pointer"
+                  >
+                    How do we reduce customer churn?
+                  </button>
+                </div>
               </div>
-            </div>
+            )}
 
-            {/* Execution Graph */}
-            <ExecutionGraph
+            {/* Mission Control: Roster + Graph + War Room + Drawer */}
+            <MissionControl
+              choreographedEvents={choreographedEvents}
+              rawEvents={events}
               tasks={tasks}
               findings={findings}
-              onSelectFinding={setSelectedFinding}
+              workflowStatus={workflowStatus}
+              playbackSpeed={playbackSpeed}
+              onTogglePlaybackSpeed={setPlaybackSpeed}
+              onSkipToReport={skipToReport}
+              onOpenReport={handleOpenReport}
+              onInspectFinding={setSelectedFinding}
+              onInjectFault={handleInjectFault}
+              stagedFault={stagedFault}
+              onSetStagedFault={setStagedFault}
             />
-
-            {/* Bottom Row: Failure Injector and Event Stream */}
-            <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
-              <FailureInjector
-                onInject={handleInjectFault}
-                stagedFault={stagedFault}
-                onSetStagedFault={setStagedFault}
-                workflowStatus={workflowStatus}
-              />
-              <EventFeed events={events} />
-            </div>
           </div>
         )}
 
@@ -415,7 +478,7 @@ export const App: React.FC = () => {
               </p>
               <button
                 onClick={() => setActiveTab('console')}
-                className="px-5 py-2 bg-brand-500 hover:bg-brand-400 text-slate-950 font-bold text-xs rounded-xl shadow-lg transition"
+                className="px-5 py-2 bg-brand-500 hover:bg-brand-400 text-slate-950 font-bold text-xs rounded-xl shadow-lg transition cursor-pointer"
               >
                 Go to Decision Console
               </button>
@@ -438,7 +501,7 @@ export const App: React.FC = () => {
               </p>
               <button
                 onClick={() => setActiveTab('console')}
-                className="px-5 py-2 bg-brand-500 hover:bg-brand-400 text-slate-950 font-bold text-xs rounded-xl shadow-lg transition"
+                className="px-5 py-2 bg-brand-500 hover:bg-brand-400 text-slate-950 font-bold text-xs rounded-xl shadow-lg transition cursor-pointer"
               >
                 Go to Decision Console
               </button>
@@ -461,7 +524,7 @@ export const App: React.FC = () => {
               </p>
               <button
                 onClick={() => setActiveTab('console')}
-                className="px-5 py-2 bg-brand-500 hover:bg-brand-400 text-slate-950 font-bold text-xs rounded-xl shadow-lg transition"
+                className="px-5 py-2 bg-brand-500 hover:bg-brand-400 text-slate-950 font-bold text-xs rounded-xl shadow-lg transition cursor-pointer"
               >
                 Go to Decision Console
               </button>
@@ -494,7 +557,7 @@ export const App: React.FC = () => {
               </div>
               <button
                 onClick={() => setSelectedFinding(null)}
-                className="text-slate-400 hover:text-white text-lg font-bold"
+                className="text-slate-400 hover:text-white text-lg font-bold cursor-pointer"
               >
                 ✕
               </button>
@@ -548,7 +611,7 @@ export const App: React.FC = () => {
                       console.error(e);
                     }
                   }}
-                  className="px-4 py-1.5 bg-emerald-500/20 hover:bg-emerald-500/30 text-emerald-300 border border-emerald-500/30 text-xs font-semibold rounded-lg transition flex items-center gap-1.5"
+                  className="px-4 py-1.5 bg-emerald-500/20 hover:bg-emerald-500/30 text-emerald-300 border border-emerald-500/30 text-xs font-semibold rounded-lg transition flex items-center gap-1.5 cursor-pointer"
                 >
                   <span>🛡️</span>
                   <span>Re-inject & Restore Primary {selectedFinding.agent}</span>
@@ -556,7 +619,7 @@ export const App: React.FC = () => {
               ) : <div />}
               <button
                 onClick={() => setSelectedFinding(null)}
-                className="px-4 py-1.5 bg-slate-800 hover:bg-slate-700 text-xs font-semibold text-white rounded-lg transition"
+                className="px-4 py-1.5 bg-slate-800 hover:bg-slate-700 text-xs font-semibold text-white rounded-lg transition cursor-pointer"
               >
                 Close Inspector
               </button>
@@ -567,4 +630,3 @@ export const App: React.FC = () => {
     </div>
   );
 };
-

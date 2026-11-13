@@ -1,4 +1,5 @@
 import React, { useState } from 'react';
+import { getAgentMeta } from '../orchestration/agentMeta';
 
 export interface StagedFault {
   agent: string;
@@ -81,6 +82,7 @@ export const FailureInjector: React.FC<Props> = ({
   };
 
   const isHeal = actionType === 'heal';
+  const targetMeta = getAgentMeta(agent);
 
   return (
     <div className="bg-slate-900/90 border border-slate-800 rounded-2xl p-5 shadow-xl">
@@ -101,18 +103,28 @@ export const FailureInjector: React.FC<Props> = ({
       <div className="flex flex-wrap items-center gap-3 pt-4">
         <div>
           <label className="block text-[11px] font-medium text-slate-400 mb-1">Target Agent</label>
-          <select
-            value={agent}
-            onChange={(e) => setAgent(e.target.value)}
-            className="bg-slate-950 border border-slate-800 rounded-lg px-3 py-1.5 text-xs text-slate-200 focus:outline-none focus:border-brand-500"
-          >
-            <option value="growth">Growth (Acquisition)</option>
-            <option value="cfo">CFO (Financials)</option>
-            <option value="cto">CTO (Infrastructure)</option>
-            <option value="customer">Customer (Retention)</option>
-            <option value="product">Product (Packaging)</option>
-            <option value="skeptic">Skeptic (Audit)</option>
-          </select>
+          <div className="flex items-center gap-2">
+            <select
+              value={agent}
+              onChange={(e) => setAgent(e.target.value)}
+              className="bg-slate-950 border border-slate-800 rounded-lg px-3 py-1.5 text-xs text-slate-200 focus:outline-none focus:border-brand-500"
+            >
+              <option value="growth">Growth (Acquisition)</option>
+              <option value="cfo">CFO (Financials)</option>
+              <option value="cto">CTO (Infrastructure)</option>
+              <option value="customer">Customer (Retention)</option>
+              <option value="product">Product (Packaging)</option>
+              <option value="skeptic">Skeptic (Audit)</option>
+            </select>
+            <div className="flex items-center gap-1.5 bg-slate-950 px-2 py-1 rounded-lg border border-slate-800">
+              <img
+                src={targetMeta.avatar}
+                alt={targetMeta.name}
+                className="w-5 h-5 rounded-full border border-slate-700 bg-slate-900 p-0.5"
+              />
+              <span className="text-[11px] font-mono font-semibold text-slate-200">{targetMeta.name}</span>
+            </div>
+          </div>
         </div>
 
         <div>
