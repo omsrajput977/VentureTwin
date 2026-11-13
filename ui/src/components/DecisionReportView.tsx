@@ -9,7 +9,7 @@ interface Props {
 
 export const DecisionReportView: React.FC<Props> = ({ report, decisionId, onApprovalDone }) => {
   const [approvalNotes, setApprovalNotes] = useState('');
-  const [approvalStatus, setApprovalStatus] = useState<string | null>(null);
+  const [signoffRecord, setSignoffRecord] = useState<{ action: string; notes?: string } | null>(null);
 
   if (!report) {
     return (
@@ -22,10 +22,9 @@ export const DecisionReportView: React.FC<Props> = ({ report, decisionId, onAppr
   const handleAction = async (action: 'approve' | 'reject' | 'request_changes') => {
     try {
       await approveDecision(decisionId, action, approvalNotes);
-      setApprovalStatus(`Decision recorded as "${action}". Visible in Calibration & History.`);
-      onApprovalDone();
+      setSignoffRecord({ action, notes: approvalNotes });
     } catch (e: any) {
-      alert(`Approval error: ${e.message}`);
+      alert(`Sign-off error: ${e.message}`);
     }
   };
 
@@ -206,24 +205,30 @@ export const DecisionReportView: React.FC<Props> = ({ report, decisionId, onAppr
             <h3 className="text-lg font-bold text-white mb-1">Sensitivity Analysis (Tornado)</h3>
             <p className="text-xs text-slate-400 mb-4">Ranked variance impact on 12-month net contribution</p>
             <div className="space-y-3">
-              {tornado.map((t: any, idx: number) => {
-                const lowVal = t.net_contribution_at_low ?? t.margin_at_low ?? 0;
-                const highVal = t.net_contribution_at_high ?? t.margin_at_high ?? 0;
-                const name = String(t.assumption_name || t.param || `Param ${idx + 1}`).replace(/_/g, ' ');
-                const swingVal = Number(t.swing ?? 0).toLocaleString();
-                return (
-                  <div key={t.assumption_name || idx} className="bg-slate-950/60 p-2.5 rounded-lg border border-slate-800/60">
-                    <div className="flex justify-between text-xs mb-1">
-                      <span className="font-semibold text-white">#{t.impact_rank ?? idx + 1} {name}</span>
-                      <span className="font-mono text-brand-400">Swing: ${swingVal}</span>
+              {tornado.length === 0 ? (
+                <div className="p-4 bg-slate-950/60 rounded-xl border border-slate-800/80 text-xs text-slate-400">
+                  Parameter sensitivity variance is within nominal thresholds for the evaluated scenario bounds.
+                </div>
+              ) : (
+                tornado.map((t: any, idx: number) => {
+                  const lowVal = t.net_contribution_at_low ?? t.margin_at_low ?? 0;
+                  const highVal = t.net_contribution_at_high ?? t.margin_at_high ?? 0;
+                  const name = String(t.assumption_name || t.param || `Param ${idx + 1}`).replace(/_/g, ' ');
+                  const swingVal = Number(t.swing ?? 0).toLocaleString();
+                  return (
+                    <div key={t.assumption_name || idx} className="bg-slate-950/60 p-2.5 rounded-lg border border-slate-800/60">
+                      <div className="flex justify-between text-xs mb-1">
+                        <span className="font-semibold text-white">#{t.impact_rank ?? idx + 1} {name}</span>
+                        <span className="font-mono text-brand-400">Swing: ${swingVal}</span>
+                      </div>
+                      <div className="flex justify-between text-[11px] text-slate-500 font-mono">
+                        <span>Low ({t.low_value ?? 0}): ${Number(lowVal).toLocaleString()}</span>
+                        <span>High ({t.high_value ?? 0}): ${Number(highVal).toLocaleString()}</span>
+                      </div>
                     </div>
-                    <div className="flex justify-between text-[11px] text-slate-500 font-mono">
-                      <span>Low ({t.low_value ?? 0}): ${Number(lowVal).toLocaleString()}</span>
-                      <span>High ({t.high_value ?? 0}): ${Number(highVal).toLocaleString()}</span>
-                    </div>
-                  </div>
-                );
-              })}
+                  );
+                })
+              )}
             </div>
           </div>
 
@@ -369,45 +374,94 @@ export const DecisionReportView: React.FC<Props> = ({ report, decisionId, onAppr
         <h3 className="text-lg font-bold text-white mb-1">Human-in-the-Loop Sign-Off Gate</h3>
         <p className="text-xs text-slate-400 mb-4">Strategic recommendations require explicit human approval before persisting as official board records</p>
 
-        <div className="space-y-4">
-          <div>
-            <label className="block text-xs font-medium text-slate-400 mb-1">Executive Notes & Context</label>
-            <input
-              type="text"
-              value={approvalNotes}
-              onChange={(e) => setApprovalNotes(e.target.value)}
-              placeholder="e.g. Approved for pilot rollout in Q1 with Starter guardrails..."
-              className="w-full bg-slate-950 border border-slate-800 rounded-xl px-4 py-2.5 text-xs text-slate-200 focus:outline-none focus:border-brand-500"
-            />
-          </div>
+        {signoffRecord ? (
+          <div className="space-y-4">
+            <div className={`p-4 rounded-xl border ${
+              signoffRecord.action === 'approve'
+                ? 'bg-emerald-500/10 border-emerald-500/30 text-emerald-200'
+                : signoffRecord.action === 'reject'
+                ? 'bg-rose-500/10 border-rose-500/30 text-rose-200'
+                : 'bg-amber-500/10 border-amber-500/30 text-amber-200'
+            }`}>
+              <div className="flex items-center justify-between mb-2">
+                <div className="flex items-center gap-2">
+                  <span className={`px-2.5 py-0.5 rounded-full text-xs font-bold uppercase tracking-wider ${
+                    signoffRecord.action === 'approve'
+                      ? 'bg-emerald-500/20 text-emerald-300'
+                      : signoffRecord.action === 'reject'
+                      ? 'bg-rose-500/20 text-rose-300'
+                      : 'bg-amber-500/20 text-amber-300'
+                  }`}>
+                    {signoffRecord.action === 'approve' ? '✅ Approved' : signoffRecord.action === 'reject' ? '🛑 Rejected' : '⚠️ Changes Requested'}
+                  </span>
+                  <span className="text-xs font-semibold text-white">Sign-Off Recorded</span>
+                </div>
+                <button
+                  onClick={() => setSignoffRecord(null)}
+                  className="text-xs text-slate-400 hover:text-white underline"
+                >
+                  Edit Sign-Off
+                </button>
+              </div>
 
-          <div className="flex flex-wrap items-center gap-3">
-            <button
-              onClick={() => handleAction('approve')}
-              className="px-5 py-2.5 bg-emerald-600 hover:bg-emerald-500 text-white rounded-xl text-xs font-semibold shadow-lg shadow-emerald-600/20 transition"
-            >
-              Approve Recommendation
-            </button>
-            <button
-              onClick={() => handleAction('request_changes')}
-              className="px-5 py-2.5 bg-slate-800 hover:bg-slate-700 text-slate-200 rounded-xl text-xs font-semibold transition"
-            >
-              Request Changes
-            </button>
-            <button
-              onClick={() => handleAction('reject')}
-              className="px-5 py-2.5 bg-rose-600/20 hover:bg-rose-600/30 text-rose-300 border border-rose-600/30 rounded-xl text-xs font-semibold transition"
-            >
-              Reject
-            </button>
-          </div>
+              <div className="text-xs text-slate-300">
+                {signoffRecord.action === 'approve' && 'Recommendation officially approved for execution. Outcome tracking window initialized.'}
+                {signoffRecord.action === 'reject' && 'Recommendation rejected by leadership. Maintaining status quo operating baseline.'}
+                {signoffRecord.action === 'request_changes' && 'Executive revisions requested. Recommendation returned to multi-agent council.'}
+              </div>
 
-          {approvalStatus && (
-            <div className="text-xs text-emerald-400 bg-emerald-500/10 border border-emerald-500/20 p-3 rounded-xl">
-              {approvalStatus}
+              {signoffRecord.notes && (
+                <div className="mt-2 text-xs text-slate-400 italic bg-slate-950/40 p-2 rounded-lg border border-slate-800/40">
+                  Notes: "{signoffRecord.notes}"
+                </div>
+              )}
             </div>
-          )}
-        </div>
+
+            <div className="flex justify-end">
+              <button
+                onClick={onApprovalDone}
+                className="px-4 py-2 bg-brand-500 hover:bg-brand-400 text-slate-950 font-bold text-xs rounded-xl shadow-lg transition flex items-center gap-1.5"
+              >
+                <span>View Decision Record in Calibration & Memory</span>
+                <span>→</span>
+              </button>
+            </div>
+          </div>
+        ) : (
+          <div className="space-y-4">
+            <div>
+              <label className="block text-xs font-medium text-slate-400 mb-1">Executive Notes & Context</label>
+              <input
+                type="text"
+                value={approvalNotes}
+                onChange={(e) => setApprovalNotes(e.target.value)}
+                placeholder="e.g. Approved for pilot rollout in Q1 with Starter guardrails..."
+                className="w-full bg-slate-950 border border-slate-800 rounded-xl px-4 py-2.5 text-xs text-slate-200 focus:outline-none focus:border-brand-500"
+              />
+            </div>
+
+            <div className="flex flex-wrap items-center gap-3">
+              <button
+                onClick={() => handleAction('approve')}
+                className="px-5 py-2.5 bg-emerald-600 hover:bg-emerald-500 text-white rounded-xl text-xs font-semibold shadow-lg shadow-emerald-600/20 transition"
+              >
+                Approve Recommendation
+              </button>
+              <button
+                onClick={() => handleAction('request_changes')}
+                className="px-5 py-2.5 bg-slate-800 hover:bg-slate-700 text-slate-200 rounded-xl text-xs font-semibold transition"
+              >
+                Request Changes
+              </button>
+              <button
+                onClick={() => handleAction('reject')}
+                className="px-5 py-2.5 bg-rose-600/20 hover:bg-rose-600/30 text-rose-300 border border-rose-600/30 rounded-xl text-xs font-semibold transition"
+              >
+                Reject
+              </button>
+            </div>
+          </div>
+        )}
       </div>
     </div>
   );

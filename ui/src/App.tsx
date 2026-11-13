@@ -14,7 +14,7 @@ import {
 import { CompanySnapshotCard } from './components/CompanySnapshotCard';
 import { ExecutionGraph } from './components/ExecutionGraph';
 import { EventFeed } from './components/EventFeed';
-import { FailureInjector } from './components/FailureInjectorModal';
+import { FailureInjector, StagedFault } from './components/FailureInjectorModal';
 import { DecisionReportView } from './components/DecisionReportView';
 import { CalibrationView } from './components/CalibrationView';
 import { CompanyGraphView } from './components/CompanyGraphView';
@@ -34,6 +34,7 @@ export const App: React.FC = () => {
   const [events, setEvents] = useState<EventItem[]>([]);
   const [report, setReport] = useState<any>(null);
   const [selectedFinding, setSelectedFinding] = useState<FindingItem | null>(null);
+  const [stagedFault, setStagedFault] = useState<StagedFault | null>(null);
 
   const hasGivenPrompt = Boolean(currentDecisionId);
 
@@ -52,7 +53,7 @@ export const App: React.FC = () => {
 
   // Poll workflow status when a decision is active
   useEffect(() => {
-    if (!currentDecisionId || workflowStatus === 'completed' || workflowStatus === 'failed') return;
+    if (!currentDecisionId || report) return;
 
     const interval = setInterval(async () => {
       try {
@@ -61,18 +62,26 @@ export const App: React.FC = () => {
         if (data.tasks) setTasks(data.tasks);
         if (data.findings) setFindings(data.findings);
 
-        if (data.status === 'completed' || data.status === 'degraded') {
+        if (data.has_report || data.status === 'completed' || data.status === 'degraded') {
+          try {
+            const rep = await fetchDecisionReport(currentDecisionId);
+            if (rep) {
+              setReport(rep);
+              clearInterval(interval);
+            }
+          } catch (e) {
+            // Report is still generating in background, keep polling
+          }
+        } else if (data.status === 'failed') {
           clearInterval(interval);
-          const rep = await fetchDecisionReport(currentDecisionId);
-          setReport(rep);
         }
       } catch (err) {
         console.error(err);
       }
-    }, 400);
+    }, 500);
 
     return () => clearInterval(interval);
-  }, [currentDecisionId, workflowStatus]);
+  }, [currentDecisionId, report]);
 
   // Connect to SSE stream
   useEffect(() => {
@@ -83,6 +92,18 @@ export const App: React.FC = () => {
       try {
         const parsed = JSON.parse(e.data);
         setEvents((prev) => [...prev, parsed]);
+
+        if (parsed.type === 'report_ready' || parsed.type === 'workflow_completed' || parsed.type === 'workflow_degraded') {
+          fetchDecisionStatus(currentDecisionId).then((data) => {
+            setWorkflowStatus(data.status);
+            if (data.tasks) setTasks(data.tasks);
+            if (data.findings) setFindings(data.findings);
+          }).catch(console.error);
+
+          fetchDecisionReport(currentDecisionId).then((rep) => {
+            if (rep) setReport(rep);
+          }).catch(console.error);
+        }
       } catch (err) {
         console.error('SSE parse error:', err);
       }
@@ -105,8 +126,9 @@ export const App: React.FC = () => {
       setEvents([]);
       setReport(null);
 
-      const res = await submitDecision(q);
+      const res = await submitDecision(q, undefined, stagedFault || undefined);
       setCurrentDecisionId(res.decision_id);
+      setStagedFault(null);
       setActiveTab('console');
     } catch (err: any) {
       alert(`Launch error: ${err.message}`);
@@ -153,9 +175,9 @@ export const App: React.FC = () => {
               Decision Console
             </button>
             <button
-              disabled={!hasGivenPrompt || !report}
+              disabled={!hasGivenPrompt || (workflowStatus === 'running' && !report)}
               onClick={async () => {
-                if (!hasGivenPrompt || !report) return;
+                if (!hasGivenPrompt) return;
                 setActiveTab('report');
                 if (!report && currentDecisionId) {
                   try {
@@ -169,12 +191,12 @@ export const App: React.FC = () => {
               title={
                 !hasGivenPrompt
                   ? 'Please submit a prompt in the Decision Console first'
-                  : !report
+                  : !report && workflowStatus === 'running'
                   ? 'Report will be available once the simulation completes'
                   : 'View verified decision report'
               }
               className={`px-3 py-1.5 rounded-lg text-xs font-medium transition ${
-                !hasGivenPrompt || !report
+                !hasGivenPrompt || (workflowStatus === 'running' && !report)
                   ? 'opacity-40 cursor-not-allowed text-slate-600'
                   : activeTab === 'report'
                   ? 'bg-brand-500 text-slate-950 font-bold shadow'
@@ -283,9 +305,18 @@ export const App: React.FC = () => {
           <div className="space-y-6">
             {/* Decision Intake Box */}
             <div className="bg-slate-900/90 border border-slate-800 rounded-2xl p-5 shadow-xl">
-              <label className="block text-xs font-semibold uppercase tracking-wider text-slate-400 mb-2">
-                Strategic Question Intake
-              </label>
+              <div className="flex items-center justify-between mb-2">
+                <label className="block text-xs font-semibold uppercase tracking-wider text-slate-400">
+                  Strategic Question Intake
+                </label>
+                {stagedFault && (
+                  <span className="text-[11px] font-semibold text-rose-400 bg-rose-500/10 border border-rose-500/30 px-2.5 py-0.5 rounded-full flex items-center gap-1.5 animate-pulse">
+                    <span>⚡ Chaos Armed:</span>
+                    <span className="font-mono uppercase font-bold">{stagedFault.agent}</span>
+                    <span>({stagedFault.mode})</span>
+                  </span>
+                )}
+              </div>
               <div className="flex flex-col sm:flex-row gap-3">
                 <input
                   type="text"
@@ -356,7 +387,9 @@ export const App: React.FC = () => {
             <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
               <FailureInjector
                 onInject={handleInjectFault}
-                disabled={workflowStatus !== 'running'}
+                stagedFault={stagedFault}
+                onSetStagedFault={setStagedFault}
+                workflowStatus={workflowStatus}
               />
               <EventFeed events={events} />
             </div>
@@ -450,6 +483,16 @@ export const App: React.FC = () => {
                 <span className="text-xs px-2 py-0.5 rounded font-mono bg-slate-800 text-slate-300">
                   {selectedFinding.task_id || ''}
                 </span>
+                {selectedFinding.recovered_via_backup && (
+                  <span className="text-xs px-2 py-0.5 rounded font-semibold bg-purple-500/20 text-purple-300 border border-purple-500/30">
+                    🛡️ Recovered by Backup Analyst
+                  </span>
+                )}
+                {selectedFinding.degraded && (
+                  <span className="text-xs px-2 py-0.5 rounded font-semibold bg-amber-500/20 text-amber-300 border border-amber-500/30">
+                    ⚠️ Degraded Prior
+                  </span>
+                )}
               </div>
               <button
                 onClick={() => setSelectedFinding(null)}

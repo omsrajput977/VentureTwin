@@ -103,25 +103,25 @@ def compute_dynamic_strategy_comparison(
     company_data: Optional[Dict[str, Any]] = None
 ) -> Dict[str, Any]:
     from simulation.saas_model import run_saas_dynamics
-    from simulation.engine import find_flip_point, extract_scenario_params_from_reconciled
+    from simulation.engine import find_flip_point, extract_scenario_params_from_reconciled, run_sensitivity_analysis
     from data.loader import load_company_data
 
     data = company_data or load_company_data()
 
-    if not ranked or not ranked[0].is_feasible:
+    if not ranked:
         return {
-            "top_strategy": ranked[0].strategy if ranked else "None",
+            "top_strategy": "None",
             "runner_up": None,
             "margin_tornado": [],
             "flip_point": {
                 "has_flip_point": False,
                 "threshold": None,
-                "statement": "No strategy is viable under current constraints; flip point analysis omitted."
+                "statement": "No strategies evaluated."
             }
         }
 
     s1 = ranked[0].strategy
-    s2 = ranked[1].strategy if len(ranked) >= 2 else "C_no_free_plan"
+    s2 = ranked[1].strategy if len(ranked) >= 2 else "C_status_quo"
     s3 = ranked[2].strategy if len(ranked) >= 3 else None
 
     # Compute margin tornado between s1 and s2
@@ -151,16 +151,33 @@ def compute_dynamic_strategy_comparison(
             "base_value": spec.base,
             "margin_at_low": round(margin_low, 2),
             "margin_at_high": round(margin_high, 2),
-            "net_contribution_at_low": round(margin_low, 2),
-            "net_contribution_at_high": round(margin_high, 2),
+            "net_contribution_at_low": round(out_s1_low["net_contribution_12"], 2),
+            "net_contribution_at_high": round(out_s1_high["net_contribution_12"], 2),
             "swing": swing
         })
     margin_tornado.sort(key=lambda x: x["swing"], reverse=True)
 
-    # Compute flip point against s2 (or s3 if s2 has no flip point)
-    fp = find_flip_point(s1, s2, "free_to_paid_conversion", reconciled, data)
-    if not fp.get("has_flip_point") and s3:
-        fp = find_flip_point(s1, s3, "free_to_paid_conversion", reconciled, data)
+    # If margin_tornado has zero total swing, fall back to single-strategy OAT sensitivity on s1
+    total_swing = sum(item["swing"] for item in margin_tornado)
+    if total_swing == 0 or not margin_tornado:
+        oat_tornado = run_sensitivity_analysis(s1, reconciled, company_data=data)
+        if oat_tornado:
+            margin_tornado = oat_tornado
+
+    for idx, item in enumerate(margin_tornado):
+        item["impact_rank"] = idx + 1
+
+    # Compute flip point
+    if not ranked[0].is_feasible:
+        fp = {
+            "has_flip_point": False,
+            "threshold": None,
+            "statement": "No strategy is viable under current constraints; flip point analysis omitted."
+        }
+    else:
+        fp = find_flip_point(s1, s2, "free_to_paid_conversion", reconciled, data)
+        if not fp.get("has_flip_point") and s3:
+            fp = find_flip_point(s1, s3, "free_to_paid_conversion", reconciled, data)
 
     return {
         "top_strategy": s1,

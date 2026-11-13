@@ -187,6 +187,9 @@ class Supervisor:
 
         for attempt in range(1, max_attempts + 1):
             task.attempts = attempt
+            # Dynamically check injected_failures on each attempt for live mid-run injections
+            if not injected:
+                injected = self.injected_failures.get(agent_name)
             try:
                 if task.kind == "agent_analysis":
                     if agent is None:
@@ -255,7 +258,7 @@ class Supervisor:
                             backup_finding.confidence = min(backup_finding.confidence, 0.70)
                             state.recovered_agents.append(agent_name.upper())
                             state.add_finding(backup_finding)
-                            state.status = "degraded"
+                            # Workflow remains 'running' until full DAG completes, then transitions to 'degraded'
                             await self.event_bus.emit(
                                 "recovery_done",
                                 agent=agent_name,
@@ -272,7 +275,7 @@ class Supervisor:
                             state.degraded_agents.append(agent_name.upper())
                             fallback_finding = self._generate_fallback_finding(task, agent_name)
                             state.add_finding(fallback_finding)
-                            state.status = "degraded"
+                            # Workflow remains 'running' until full DAG completes, then transitions to 'degraded'
                             await self.event_bus.emit(
                                 "recovery_done",
                                 agent=agent_name,

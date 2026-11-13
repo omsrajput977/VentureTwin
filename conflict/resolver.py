@@ -219,43 +219,71 @@ def resolve_conflict_via_simulation(
         reject_count = sum(1 for f in findings if f.recommendation == "reject")
         proceed_count = sum(1 for f in findings if f.recommendation in ["proceed", "proceed_with_limits"])
 
-        if reject_count > proceed_count:
-            conflict.status = "resolved"
-            conflict.unresolved = False
-            conflict.verdict = f"Specialist consensus ({reject_count} of {len(findings)} agents) and simulation confirm status quo ({strat_c}) is optimal; proposal rejected."
-            conflict.resolution = (
-                f"Resolved by simulation and executive consensus: Reject recommendation upheld. Maintaining Status Quo ({strat_c}) "
-                f"preserves ${res_c['net_contribution_12']:,.2f} in 12-month net contribution with {res_c['runway_months_12']:.1f} months runway >= {min_runway:.1f}mo floor. "
-                "Isolated proceed recommendation is unsupported by operating fundamentals."
-            )
-            return conflict
-
         # Check if feasible strategy exists with net contribution > status quo C
         feasible_outperformers = [
             (strat, res_map[strat]) for strat in [strat_a, strat_b]
             if res_map[strat]["runway_months_12"] >= min_runway and res_map[strat]["net_contribution_12"] > res_c["net_contribution_12"]
         ]
 
-        if feasible_outperformers:
+        # Identify the two conflicting agents for this specific conflict
+        agent_1 = conflict.agents[0] if len(conflict.agents) > 0 else "Agent 1"
+        agent_2 = conflict.agents[1] if len(conflict.agents) > 1 else "Agent 2"
+
+        finding_1 = next((f for f in findings if f.agent.upper() == agent_1.upper()), None)
+        finding_2 = next((f for f in findings if f.agent.upper() == agent_2.upper()), None)
+
+        rec_1 = finding_1.recommendation if finding_1 else "proceed"
+        rec_2 = finding_2.recommendation if finding_2 else "reject"
+
+        # Domain knowledge map for distinct, personalized resolution rationale
+        domain_contexts = {
+            "CFO": "cash runway depletion, burn rate risks, and gross margin integrity",
+            "GROWTH": "top-of-funnel conversion velocity, acquisition volume, and user sign-up momentum",
+            "CTO": "cloud infrastructure spend, unit hosting cost per user, and SLA stability",
+            "CUSTOMER": "net account retention, customer churn velocity, and support seat capacity",
+            "PRODUCT": "feature packaging boundaries, usage ceilings, and tier upgrade catalysts",
+            "SKEPTIC": "downside tail risks, margin sustainability, and operational downside protection",
+            "BACKUP_ANALYST": "conservative telemetry heuristics under widened uncertainty boundaries"
+        }
+
+        # Determine which agent favored proceed vs reject
+        pro_agent = agent_1 if rec_1 in ["proceed", "proceed_with_limits"] else agent_2
+        con_agent = agent_2 if pro_agent == agent_1 else agent_1
+        pro_rec = rec_1 if pro_agent == agent_1 else rec_2
+        con_rec = rec_2 if pro_agent == agent_1 else rec_1
+        pro_ctx = domain_contexts.get(pro_agent.upper(), "growth & adoption")
+        con_ctx = domain_contexts.get(con_agent.upper(), "risk mitigation")
+
+        if reject_count > proceed_count or not feasible_outperformers:
+            conflict.status = "resolved"
+            conflict.unresolved = False
+            conflict.verdict = (
+                f"Empirical simulation resolves dispute between {pro_agent} ({pro_rec}) and {con_agent} ({con_rec}): "
+                f"Status Quo ({strat_c}) is confirmed optimal; proposal rejected."
+            )
+            conflict.resolution = (
+                f"Resolved by simulation: {pro_agent} favored {pro_rec.replace('_', ' ')} based on {pro_ctx}, "
+                f"while {con_agent} argued for {con_rec.replace('_', ' ')} citing {con_ctx}. "
+                f"Deterministic simulation reveals that maintaining Status Quo ({strat_c}) secures ${res_c['net_contribution_12']:,.2f} "
+                f"in 12-month net contribution with {res_c['runway_months_12']:.1f}mo runway >= {min_runway:.1f}mo floor. "
+                f"The upside modeled by {pro_agent} fails to offset {con_agent}'s identified downside risks under tested stress scenarios."
+            )
+            return conflict
+        else:
             best_strat, best_res = max(feasible_outperformers, key=lambda x: x[1]["net_contribution_12"])
             margin_over_c = best_res["net_contribution_12"] - res_c["net_contribution_12"]
             conflict.status = "resolved"
             conflict.unresolved = False
-            conflict.verdict = f"Simulation confirms {best_strat} outperforms status quo ({strat_c}) while maintaining solvent runway."
-            conflict.resolution = (
-                f"Resolved by simulation: Strategy {best_strat} generates ${best_res['net_contribution_12']:,.2f} 12mo net contribution "
-                f"({margin_over_c:+,.0f} vs status quo Strategy {strat_c}) with {best_res['runway_months_12']:.1f} months runway >= {min_runway:.1f}mo floor. "
-                "Reject recommendation is contradicted by empirical runway and contribution margins."
+            conflict.verdict = (
+                f"Simulation confirms {best_strat} outperforms status quo ({strat_c}) while satisfying {con_agent}'s {con_ctx} constraints."
             )
-        else:
-            conflict.status = "resolved"
-            conflict.unresolved = False
-            conflict.verdict = f"Simulation confirms status quo (Strategy {strat_c}) preserves runway; proposed strategy is not feasible."
             conflict.resolution = (
-                f"Resolved by simulation: Evaluated strategies fail to exceed status quo net contribution (${res_c['net_contribution_12']:,.2f}) "
-                f"or breach the {min_runway:.1f} months runway safety floor. Proceed recommendation is contradicted."
+                f"Resolved by simulation: {pro_agent}'s {pro_ctx} thesis is validated by empirical testing. "
+                f"Strategy {best_strat} generates ${best_res['net_contribution_12']:,.2f} 12-month net contribution "
+                f"({margin_over_c:+,.0f} vs status quo {strat_c}) with {best_res['runway_months_12']:.1f}mo runway >= {min_runway:.1f}mo floor. "
+                f"{con_agent}'s concerns regarding {con_ctx} are successfully bounded within solvent operational guardrails."
             )
-        return conflict
+            return conflict
 
     # Default fallback
     conflict.status = "resolved"

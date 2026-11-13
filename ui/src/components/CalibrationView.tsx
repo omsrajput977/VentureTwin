@@ -57,27 +57,40 @@ export const CalibrationView: React.FC = () => {
         </div>
       </div>
 
-      {/* Live Approved Decisions */}
+      {/* Live Reviewed Decisions (Sign-Off Records) */}
       {live.length > 0 && (
         <div className="bg-slate-900/90 border border-slate-800 rounded-2xl p-6 shadow-xl">
-          <h3 className="text-lg font-bold text-white mb-1">Live Approved Strategic Decisions</h3>
-          <p className="text-xs text-slate-400 mb-4">New decisions approved by leadership, currently logging real-world metrics</p>
+          <h3 className="text-lg font-bold text-white mb-1">Live Strategic Decision Records (Executive Sign-Off)</h3>
+          <p className="text-xs text-slate-400 mb-4">Decisions reviewed by leadership (Approved, Changes Requested, or Rejected)</p>
           <div className="space-y-3">
-            {live.map((item: any, idx: number) => (
-              <div key={idx} className="p-4 bg-slate-950/80 rounded-xl border border-slate-800 flex items-center justify-between">
-                <div>
-                  <div className="text-xs font-mono text-slate-400">ID: {item.decision_id}</div>
-                  <div className="text-sm font-bold text-white mt-0.5">Strategy: {item.chosen_strategy}</div>
-                  {item.notes && <div className="text-xs text-slate-400 mt-1">Notes: {item.notes}</div>}
+            {live.map((item: any, idx: number) => {
+              const action = item.action || 'approve';
+              const isApproved = action === 'approve';
+              const isRejected = action === 'reject';
+              return (
+                <div key={idx} className="p-4 bg-slate-950/80 rounded-xl border border-slate-800 flex items-center justify-between">
+                  <div>
+                    <div className="text-xs font-mono text-slate-400">ID: {item.decision_id}</div>
+                    <div className="text-sm font-bold text-white mt-0.5">Strategy: {item.chosen_strategy}</div>
+                    {item.notes && <div className="text-xs text-slate-400 mt-1">Notes: "{item.notes}"</div>}
+                  </div>
+                  <div className="text-right">
+                    <span className={`px-2.5 py-1 text-xs font-semibold uppercase rounded-full border ${
+                      isApproved
+                        ? 'bg-emerald-500/10 text-emerald-400 border-emerald-500/20'
+                        : isRejected
+                        ? 'bg-rose-500/10 text-rose-400 border-rose-500/20'
+                        : 'bg-amber-500/10 text-amber-400 border-amber-500/20'
+                    }`}>
+                      {isApproved ? 'Approved (Awaiting Outcome)' : isRejected ? 'Rejected by Executive' : 'Changes Requested'}
+                    </span>
+                    <div className="text-[10px] text-slate-500 mt-1">
+                      {isApproved ? 'Approved' : isRejected ? 'Rejected' : 'Reviewed'} {new Date(item.approved_at).toLocaleDateString()}
+                    </div>
+                  </div>
                 </div>
-                <div className="text-right">
-                  <span className="px-2.5 py-1 text-xs font-semibold uppercase bg-sky-500/10 text-sky-400 border border-sky-500/20 rounded-full">
-                    Awaiting Outcome (30-day window)
-                  </span>
-                  <div className="text-[10px] text-slate-500 mt-1">Approved {new Date(item.approved_at).toLocaleDateString()}</div>
-                </div>
-              </div>
-            ))}
+              );
+            })}
           </div>
         </div>
       )}

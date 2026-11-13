@@ -31,8 +31,8 @@ export const EventFeed: React.FC<Props> = ({ events }) => {
             if (e.type.includes('ready') || e.type.includes('passed')) color = 'text-emerald-400';
 
             return (
-              <div key={idx} className="p-2 rounded bg-slate-950/60 border border-slate-800/60 flex items-start gap-2">
-                <span className="text-slate-500 text-[10px] shrink-0 mt-0.5">{timeStr}</span>
+              <div key={idx} className="p-2 rounded bg-slate-950/60 border border-slate-800/60 flex flex-wrap items-center gap-2">
+                <span className="text-slate-500 text-[10px] shrink-0">{timeStr}</span>
                 <span className="px-1.5 py-0.2 text-[10px] bg-slate-800 rounded font-semibold text-brand-300 shrink-0 uppercase">
                   {e.agent}
                 </span>
@@ -41,6 +41,21 @@ export const EventFeed: React.FC<Props> = ({ events }) => {
                 </span>
                 {e.payload?.task_id && (
                   <span className="text-slate-500 text-[10px] shrink-0">[{e.payload.task_id}]</span>
+                )}
+                {e.payload?.mode && (
+                  <span className="text-amber-300 text-[10px] font-mono shrink-0">
+                    mode={e.payload.mode}
+                  </span>
+                )}
+                {e.payload?.attempt && (
+                  <span className="text-slate-400 text-[10px] shrink-0">
+                    att #{e.payload.attempt}
+                  </span>
+                )}
+                {e.payload?.error && (
+                  <span className="text-rose-400/90 text-[10px] truncate max-w-sm" title={e.payload.error}>
+                    ⚠️ {e.payload.error}
+                  </span>
                 )}
               </div>
             );

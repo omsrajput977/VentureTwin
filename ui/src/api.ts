@@ -38,6 +38,9 @@ export interface FindingItem {
   evidence: any[];
   confidence: number;
   limitations: string[];
+  recovered_via_backup?: boolean;
+  degraded?: boolean;
+  status?: string;
 }
 
 export interface EventItem {
@@ -61,11 +64,11 @@ export async function fetchCompany(): Promise<CompanySnapshot> {
   return res.json();
 }
 
-export async function submitDecision(query: string, constraints?: Record<string, any>) {
+export async function submitDecision(query: string, constraints?: Record<string, any>, injectedFailure?: any) {
   const res = await fetch(`${API_BASE}/decisions`, {
     method: 'POST',
     headers: { 'Content-Type': 'application/json' },
-    body: JSON.stringify({ query, constraints })
+    body: JSON.stringify({ query, constraints, injected_failure: injectedFailure })
   });
   if (!res.ok) {
     let msg = 'Failed to submit decision';

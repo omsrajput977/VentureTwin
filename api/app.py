@@ -5,7 +5,7 @@ from pathlib import Path
 from datetime import datetime, timezone
 from typing import Dict, Any, List, Optional, Literal
 
-# Load local .env into os.environ if present
+# Load local .env into os.environ if present (setdefault so caller env takes precedence)
 _env_path = Path(__file__).resolve().parent.parent / ".env"
 if _env_path.exists():
     with open(_env_path, "r", encoding="utf-8") as _f:
@@ -13,7 +13,7 @@ if _env_path.exists():
             _line = _line.strip()
             if _line and not _line.startswith("#") and "=" in _line:
                 _k, _v = _line.split("=", 1)
-                os.environ[_k.strip()] = _v.strip().strip('"').strip("'")
+                os.environ.setdefault(_k.strip(), _v.strip().strip('"').strip("'"))
 from fastapi import FastAPI, HTTPException, BackgroundTasks
 from fastapi.responses import StreamingResponse, FileResponse
 from fastapi.staticfiles import StaticFiles
@@ -59,15 +59,16 @@ class HealthStatus(BaseModel):
     model: str
     probe_latency_ms: Optional[float] = None
 
-class DecisionRequest(BaseModel):
-    query: str
-    constraints: Optional[Dict[str, Any]] = None
-
 class FailureInjectionRequest(BaseModel):
     agent: str
     mode: Literal["timeout", "exception", "bad_output"]
     persist: bool = False
     fail_attempts: int = 3
+
+class DecisionRequest(BaseModel):
+    query: str
+    constraints: Optional[Dict[str, Any]] = None
+    injected_failure: Optional[FailureInjectionRequest] = None
 
 class ApprovalRequest(BaseModel):
     action: Literal["approve", "reject", "request_changes"]
@@ -170,6 +171,14 @@ async def submit_decision(req: DecisionRequest, background_tasks: BackgroundTask
     supervisor = Supervisor(llm_client=LLMClient())
     active_supervisors[decision.id] = supervisor
 
+    if req.injected_failure:
+        supervisor.inject_failure(
+            req.injected_failure.agent,
+            req.injected_failure.mode,
+            persist=req.injected_failure.persist,
+            fail_attempts=req.injected_failure.fail_attempts
+        )
+
     # Run workflow asynchronously
     async def run_flow():
         state = await supervisor.execute_workflow(decision)
@@ -203,6 +212,8 @@ async def get_decision_status(decision_id: str):
         "status": state.status,
         "round": state.round,
         "degraded_agents": state.degraded_agents,
+        "recovered_agents": getattr(state, "recovered_agents", []),
+        "has_report": getattr(state, "report", None) is not None,
         "tasks": {k: v.model_dump() for k, v in state.tasks.items()},
         "findings": [f.model_dump() for f in state.findings],
         "conflicts": [c.model_dump() for c in state.conflicts],
@@ -247,6 +258,24 @@ async def inject_failure(decision_id: str, req: FailureInjectionRequest):
         raise HTTPException(status_code=404, detail="Active supervisor not found for decision")
 
     supervisor.inject_failure(req.agent, req.mode, persist=req.persist, fail_attempts=req.fail_attempts)
+
+    # Emit an SSE event so the live event feed shows the injected failure
+    await supervisor.event_bus.emit(
+        "failure_injected",
+        agent=req.agent.lower(),
+        payload={"mode": req.mode, "persist": req.persist, "fail_attempts": req.fail_attempts}
+    )
+
+    # If the target agent's task has already finished, re-trigger it so mid-run injection immediately takes effect
+    target_task_id = f"task_{req.agent.lower()}_analysis"
+    if supervisor.current_state and target_task_id in supervisor.current_state.tasks:
+        task = supervisor.current_state.tasks[target_task_id]
+        if task.status == "done":
+            task.status = "retrying"
+            task.attempts = 0
+            supervisor.current_state.findings = [f for f in supervisor.current_state.findings if f.task_id != target_task_id]
+            asyncio.create_task(supervisor._run_task_with_recovery(task, supervisor.current_state))
+
     return {
         "decision_id": decision_id,
         "agent": req.agent,
@@ -300,7 +329,7 @@ async def approve_decision(decision_id: str, req: ApprovalRequest):
         "notes": req.notes,
         "approved_at": datetime.now(timezone.utc).isoformat(),
         "predicted_metrics": state.report.sections.get("scenario_table", [{}])[0],
-        "status": "awaiting_outcome" if req.action == "approve" else req.action
+        "status": "awaiting_outcome" if req.action == "approve" else ("rejected" if req.action == "reject" else "changes_requested")
     }
     decision_records_store.append(record)
     return {"status": "recorded", "decision_record": record}

@@ -18,16 +18,37 @@ export const ExecutionGraph: React.FC<Props> = ({ tasks, findings, onSelectFindi
     );
   }
 
-  const getStatusBadge = (status: string) => {
-    switch (status) {
+  const getStatusBadge = (t: TaskItem, finding?: FindingItem) => {
+    if (finding?.recovered_via_backup) {
+      return (
+        <span className="px-2 py-0.5 text-xs bg-purple-500/20 text-purple-300 border border-purple-500/30 rounded-full font-semibold">
+          🛡️ Recovered (Backup)
+        </span>
+      );
+    }
+    if (finding?.degraded) {
+      return (
+        <span className="px-2 py-0.5 text-xs bg-amber-500/20 text-amber-300 border border-amber-500/30 rounded-full font-semibold">
+          ⚠️ Degraded (Prior)
+        </span>
+      );
+    }
+    if (t.status === 'done' && t.attempts > 1) {
+      return (
+        <span className="px-2 py-0.5 text-xs bg-emerald-500/20 text-emerald-300 border border-emerald-500/30 rounded-full">
+          Done (Retry {t.attempts})
+        </span>
+      );
+    }
+    switch (t.status) {
       case 'running':
         return <span className="px-2 py-0.5 text-xs bg-sky-500/20 text-sky-400 border border-sky-500/30 rounded-full animate-pulse">Running</span>;
+      case 'retrying':
+        return <span className="px-2 py-0.5 text-xs bg-amber-500/20 text-amber-400 border border-amber-500/30 rounded-full animate-pulse">Retrying</span>;
       case 'done':
         return <span className="px-2 py-0.5 text-xs bg-emerald-500/20 text-emerald-400 border border-emerald-500/30 rounded-full">Done</span>;
       case 'failed':
         return <span className="px-2 py-0.5 text-xs bg-rose-500/20 text-rose-400 border border-rose-500/30 rounded-full">Failed</span>;
-      case 'degraded':
-        return <span className="px-2 py-0.5 text-xs bg-amber-500/20 text-amber-400 border border-amber-500/30 rounded-full">Degraded</span>;
       default:
         return <span className="px-2 py-0.5 text-xs bg-slate-800 text-slate-400 rounded-full">Pending</span>;
     }
@@ -55,22 +76,36 @@ export const ExecutionGraph: React.FC<Props> = ({ tasks, findings, onSelectFindi
           <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-5 gap-3">
             {parallelAnalysisTasks.map((t) => {
               const finding = findings.find(f => f.task_id === t.id);
+              const isRecovered = finding?.recovered_via_backup;
+              const isDegraded = finding?.degraded;
               return (
                 <div
                   key={t.id}
                   onClick={() => finding && onSelectFinding(finding)}
                   className={`p-3.5 rounded-xl border transition cursor-pointer ${
-                    finding
+                    isRecovered
+                      ? 'bg-purple-950/30 border-purple-500/50 hover:bg-purple-900/40'
+                      : isDegraded
+                      ? 'bg-amber-950/30 border-amber-500/50 hover:bg-amber-900/40'
+                      : finding
                       ? 'bg-slate-950/80 border-slate-700 hover:border-brand-500/50 hover:bg-slate-800/50'
                       : 'bg-slate-950/40 border-slate-800/80 cursor-default'
                   }`}
                 >
                   <div className="flex items-center justify-between mb-2">
                     <span className="text-sm font-bold text-white uppercase">{t.owner_agent}</span>
-                    {getStatusBadge(t.status)}
+                    {getStatusBadge(t, finding)}
                   </div>
                   <div className="text-[11px] text-slate-400 line-clamp-2">
-                    {finding ? finding.claim : `Evaluating ${t.owner_agent} domain parameters...`}
+                    {finding ? (
+                      <>
+                        {isRecovered && <span className="text-purple-300 font-semibold mr-1">🛡️ [Backup]</span>}
+                        {isDegraded && <span className="text-amber-300 font-semibold mr-1">⚠️ [Fallback]</span>}
+                        {finding.claim}
+                      </>
+                    ) : (
+                      `Evaluating ${t.owner_agent} domain parameters...`
+                    )}
                   </div>
                   {finding && (
                     <div className="mt-2 text-[10px] text-brand-400 flex items-center justify-between">
@@ -104,7 +139,7 @@ export const ExecutionGraph: React.FC<Props> = ({ tasks, findings, onSelectFindi
                     <span className="text-xs font-semibold text-white">
                       {t.id.replace('task_', '').replace(/_/g, ' ')}
                     </span>
-                    {getStatusBadge(t.status)}
+                    {getStatusBadge(t, finding)}
                   </div>
                   <div className="text-[11px] text-slate-400">
                     Agent: <span className="text-slate-300 font-medium">{t.owner_agent}</span>
