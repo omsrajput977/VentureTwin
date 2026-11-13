@@ -255,36 +255,47 @@ async def inject_failure(decision_id: str, req: FailureInjectionRequest):
     """Injects a simulated runtime fault (timeout, exception, bad_output) into an agent."""
     supervisor = active_supervisors.get(decision_id)
     if not supervisor:
-        raise HTTPException(status_code=404, detail="Active supervisor not found for decision")
+        if active_supervisors:
+            supervisor = list(active_supervisors.values())[-1]
+        else:
+            raise HTTPException(status_code=404, detail="Active supervisor not found for decision")
 
-    supervisor.inject_failure(req.agent, req.mode, persist=req.persist, fail_attempts=req.fail_attempts)
+    agent_key = req.agent.lower().split()[0]
+    supervisor.inject_failure(agent_key, req.mode, persist=req.persist, fail_attempts=req.fail_attempts)
 
     # Emit an SSE event so the live event feed shows the injected failure
     await supervisor.event_bus.emit(
         "failure_injected",
-        agent=req.agent.lower(),
+        agent=agent_key,
         payload={"mode": req.mode, "persist": req.persist, "fail_attempts": req.fail_attempts}
     )
 
     # If the target agent's task has already finished, re-trigger it so mid-run injection immediately takes effect
-    target_task_id = f"task_{req.agent.lower()}_analysis"
+    target_task_id = "task_skeptic_audit" if agent_key == "skeptic" else f"task_{agent_key}_analysis"
     if supervisor.current_state and target_task_id in supervisor.current_state.tasks:
         task = supervisor.current_state.tasks[target_task_id]
         if task.status == "done":
             task.status = "retrying"
             task.attempts = 0
             supervisor.current_state.findings = [f for f in supervisor.current_state.findings if f.task_id != target_task_id]
+            supervisor.current_state.assumptions = [a for a in supervisor.current_state.assumptions if a.proposed_by != agent_key]
+            agent_up = agent_key.upper()
+            supervisor.current_state.recovered_agents = [a for a in supervisor.current_state.recovered_agents if a != agent_up]
+            supervisor.current_state.degraded_agents = [a for a in supervisor.current_state.degraded_agents if a != agent_up]
+
             async def _rerun_task():
                 res = await supervisor._run_task_with_recovery(task, supervisor.current_state)
                 if res is not None:
                     supervisor.current_state.mark_task_done(task.id)
+                    if supervisor.current_state.recovered_agents or supervisor.current_state.degraded_agents:
+                        supervisor.current_state.status = "degraded"
                     if supervisor.current_state.report is not None:
                         await supervisor._run_report_finalize_task(task, supervisor.current_state)
             asyncio.create_task(_rerun_task())
 
     return {
         "decision_id": decision_id,
-        "agent": req.agent,
+        "agent": agent_key,
         "mode": req.mode,
         "persist": req.persist,
         "status": "failure_injected"

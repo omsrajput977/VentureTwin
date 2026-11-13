@@ -106,11 +106,18 @@ export async function injectFailure(
     body: JSON.stringify({ agent, mode, persist, fail_attempts: failAttempts })
   });
   if (!res.ok) {
-    let msg = 'Failed to inject failure';
+    let msg = `Failed to inject failure (${res.status})`;
     try {
       const err = await res.json();
-      if (err.detail) msg = err.detail;
-    } catch {}
+      if (err.detail) {
+        msg = typeof err.detail === 'string' ? err.detail : JSON.stringify(err.detail);
+      }
+    } catch {
+      try {
+        const text = await res.text();
+        if (text) msg = text;
+      } catch {}
+    }
     throw new Error(msg);
   }
   return res.json();

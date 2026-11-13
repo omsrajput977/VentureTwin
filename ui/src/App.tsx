@@ -137,12 +137,10 @@ export const App: React.FC = () => {
   };
 
   const handleInjectFault = async (agent: string, mode: string, persist: boolean = false, failAttempts: number = 1) => {
-    if (!currentDecisionId) return;
-    try {
-      await injectFailure(currentDecisionId, agent, mode, persist, failAttempts);
-    } catch (err: any) {
-      alert(`Inject fault error: ${err.message}`);
+    if (!currentDecisionId) {
+      throw new Error('No active decision running. Please submit a question first.');
     }
+    await injectFailure(currentDecisionId, agent, mode, persist, failAttempts);
   };
 
   return (

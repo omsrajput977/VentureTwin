@@ -8,7 +8,7 @@ export interface StagedFault {
 }
 
 interface Props {
-  onInject: (agent: string, mode: string, persist?: boolean, failAttempts?: number) => void;
+  onInject: (agent: string, mode: string, persist?: boolean, failAttempts?: number) => Promise<void> | void;
   stagedFault: StagedFault | null;
   onSetStagedFault: (fault: StagedFault | null) => void;
   workflowStatus: string;
@@ -25,15 +25,26 @@ export const FailureInjector: React.FC<Props> = ({
   const [persist, setPersist] = useState(false);
   const [failAttempts, setFailAttempts] = useState(1);
   const [injectedMsg, setInjectedMsg] = useState<string | null>(null);
+  const [injectError, setInjectError] = useState<string | null>(null);
+  const [isSubmitting, setIsSubmitting] = useState(false);
 
   const isRunning = workflowStatus === 'running';
 
-  const handleAction = () => {
+  const handleAction = async () => {
+    setInjectError(null);
     if (isRunning) {
-      onInject(agent, mode, persist, failAttempts);
-      const persistText = persist ? 'persistently' : `${failAttempts} attempt(s)`;
-      setInjectedMsg(`Live fault injected: ${agent.toUpperCase()} will trigger ${mode} (${persistText}).`);
-      setTimeout(() => setInjectedMsg(null), 4000);
+      setIsSubmitting(true);
+      try {
+        await onInject(agent, mode, persist, failAttempts);
+        const persistText = persist ? 'persistently' : `${failAttempts} attempt(s)`;
+        setInjectedMsg(`Live fault injected: ${agent.toUpperCase()} will trigger ${mode} (${persistText}).`);
+        setTimeout(() => setInjectedMsg(null), 5000);
+      } catch (err: any) {
+        setInjectError(err?.message || 'Failed to inject fault');
+        setTimeout(() => setInjectError(null), 6000);
+      } finally {
+        setIsSubmitting(false);
+      }
     } else {
       onSetStagedFault({
         agent,
@@ -122,15 +133,24 @@ export const FailureInjector: React.FC<Props> = ({
         <div className="pt-5 flex items-center gap-2">
           <button
             onClick={handleAction}
+            disabled={isSubmitting}
             className={`px-4 py-1.5 rounded-lg text-xs font-semibold transition border ${
-              isRunning
+              isSubmitting
+                ? 'opacity-50 cursor-not-allowed bg-slate-800 text-slate-400 border-slate-700'
+                : isRunning
                 ? 'bg-rose-500/20 hover:bg-rose-500/30 text-rose-300 border-rose-500/30'
                 : stagedFault
                 ? 'bg-amber-500/20 hover:bg-amber-500/30 text-amber-300 border-amber-500/30'
                 : 'bg-rose-500/20 hover:bg-rose-500/30 text-rose-300 border-rose-500/30'
             }`}
           >
-            {isRunning ? 'Inject Mid-Run Failure' : stagedFault ? 'Update Armed Fault' : 'Arm Fault for Run'}
+            {isSubmitting
+              ? 'Injecting...'
+              : isRunning
+              ? 'Inject Mid-Run Failure'
+              : stagedFault
+              ? 'Update Armed Fault'
+              : 'Arm Fault for Run'}
           </button>
 
           {stagedFault && !isRunning && (
@@ -156,6 +176,16 @@ export const FailureInjector: React.FC<Props> = ({
             </span>
           </div>
           <span className="text-[11px] text-rose-400/80">Ready to test on next "Run Simulation"</span>
+        </div>
+      )}
+
+      {injectError && (
+        <div className="mt-3 p-2.5 bg-rose-500/20 border border-rose-500/50 rounded-lg text-xs text-rose-200 flex items-center justify-between">
+          <div className="flex items-center gap-2">
+            <span>⚠️</span>
+            <span>{injectError}</span>
+          </div>
+          <button onClick={() => setInjectError(null)} className="text-rose-400 hover:text-white font-bold ml-2">✕</button>
         </div>
       )}
 

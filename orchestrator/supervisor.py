@@ -201,6 +201,18 @@ class Supervisor:
                         llm_client=self.llm_client,
                         injected_failure=injected
                     )
+                    # Check if failure was injected dynamically mid-run while agent was executing
+                    mid_injected = self.injected_failures.get(agent_name)
+                    if mid_injected and not injected:
+                        mode = mid_injected.get("mode", "exception")
+                        if mode == "timeout":
+                            raise asyncio.TimeoutError(f"Agent {agent_name.upper()} timed out due to mid-run injected failure")
+                        elif mode == "bad_output":
+                            raise ValueError(f"Injected bad output schema for {agent_name.upper()}")
+                        else:
+                            from agents.base_agent import AgentExecutionError
+                            raise AgentExecutionError(f"Agent {agent_name.upper()} crashed with mid-run injected exception")
+
                     state.add_finding(finding)
                     await self.event_bus.emit(
                         "finding_posted",
@@ -256,7 +268,8 @@ class Supervisor:
                             backup_finding = await backup.run_backup(task, state, self.llm_client)
                             backup_finding.recovered_via_backup = True
                             backup_finding.confidence = min(backup_finding.confidence, 0.70)
-                            state.recovered_agents.append(agent_name.upper())
+                            if agent_name.upper() not in state.recovered_agents:
+                                state.recovered_agents.append(agent_name.upper())
                             state.add_finding(backup_finding)
                             # Workflow remains 'running' until full DAG completes, then transitions to 'degraded'
                             await self.event_bus.emit(
@@ -272,7 +285,8 @@ class Supervisor:
                                 agent=agent_name,
                                 payload={"task_id": task.id, "mode": "degraded_fallback"}
                             )
-                            state.degraded_agents.append(agent_name.upper())
+                            if agent_name.upper() not in state.degraded_agents:
+                                state.degraded_agents.append(agent_name.upper())
                             fallback_finding = self._generate_fallback_finding(task, agent_name)
                             state.add_finding(fallback_finding)
                             # Workflow remains 'running' until full DAG completes, then transitions to 'degraded'
@@ -327,8 +341,19 @@ class Supervisor:
             skeptic = self.registry.get("skeptic")
             if not skeptic:
                 raise ValueError("Skeptic agent not found in registry")
+            injected = self.injected_failures.get("skeptic")
             context = {"findings": state.findings, "state": state, "decision": state.decision}
-            finding = await skeptic.run(task, context=context, llm_client=self.llm_client)
+            finding = await skeptic.run(task, context=context, llm_client=self.llm_client, injected_failure=injected)
+            mid_injected = self.injected_failures.get("skeptic")
+            if mid_injected and not injected:
+                mode = mid_injected.get("mode", "exception")
+                if mode == "timeout":
+                    raise asyncio.TimeoutError("Agent SKEPTIC timed out due to mid-run injected failure")
+                elif mode == "bad_output":
+                    raise ValueError("Injected bad output schema for SKEPTIC")
+                else:
+                    from agents.base_agent import AgentExecutionError
+                    raise AgentExecutionError("Agent SKEPTIC crashed with mid-run injected exception")
             state.add_finding(finding)
             await self.event_bus.emit(
                 "finding_posted",
