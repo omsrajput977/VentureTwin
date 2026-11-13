@@ -61,7 +61,7 @@ class HealthStatus(BaseModel):
 
 class FailureInjectionRequest(BaseModel):
     agent: str
-    mode: Literal["timeout", "exception", "bad_output"]
+    mode: Literal["timeout", "exception", "bad_output", "heal"]
     persist: bool = False
     fail_attempts: int = 3
 
@@ -252,7 +252,7 @@ async def stream_decision_events(decision_id: str):
 
 @app.post("/api/decisions/{decision_id}/inject-failure")
 async def inject_failure(decision_id: str, req: FailureInjectionRequest):
-    """Injects a simulated runtime fault (timeout, exception, bad_output) into an agent."""
+    """Injects a simulated runtime fault (timeout, exception, bad_output) or heals/restores an agent."""
     supervisor = active_supervisors.get(decision_id)
     if not supervisor:
         if active_supervisors:
@@ -261,6 +261,47 @@ async def inject_failure(decision_id: str, req: FailureInjectionRequest):
             raise HTTPException(status_code=404, detail="Active supervisor not found for decision")
 
     agent_key = req.agent.lower().split()[0]
+    target_task_id = "task_skeptic_audit" if agent_key == "skeptic" else f"task_{agent_key}_analysis"
+    agent_up = agent_key.upper()
+
+    if req.mode == "heal":
+        # Remove any injected fault for this agent
+        supervisor.injected_failures.pop(agent_key, None)
+
+        if supervisor.current_state:
+            supervisor.current_state.recovered_agents = [a for a in supervisor.current_state.recovered_agents if a != agent_up]
+            supervisor.current_state.degraded_agents = [a for a in supervisor.current_state.degraded_agents if a != agent_up]
+
+            if target_task_id in supervisor.current_state.tasks:
+                task = supervisor.current_state.tasks[target_task_id]
+                task.status = "retrying"
+                task.attempts = 0
+                supervisor.current_state.findings = [f for f in supervisor.current_state.findings if f.task_id != target_task_id]
+                supervisor.current_state.assumptions = [a for a in supervisor.current_state.assumptions if a.proposed_by != agent_key]
+
+                async def _rerun_healed():
+                    res = await supervisor._run_task_with_recovery(task, supervisor.current_state)
+                    if res is not None:
+                        supervisor.current_state.mark_task_done(task.id)
+                        if not supervisor.current_state.recovered_agents and not supervisor.current_state.degraded_agents:
+                            supervisor.current_state.status = "completed"
+                        if supervisor.current_state.report is not None:
+                            await supervisor._run_report_finalize_task(task, supervisor.current_state)
+                asyncio.create_task(_rerun_healed())
+
+        await supervisor.event_bus.emit(
+            "agent_healed",
+            agent=agent_key,
+            payload={"agent": agent_up, "status": "restored"}
+        )
+
+        return {
+            "decision_id": decision_id,
+            "agent": agent_key,
+            "mode": "heal",
+            "status": "agent_restored"
+        }
+
     supervisor.inject_failure(agent_key, req.mode, persist=req.persist, fail_attempts=req.fail_attempts)
 
     # Emit an SSE event so the live event feed shows the injected failure
@@ -271,7 +312,6 @@ async def inject_failure(decision_id: str, req: FailureInjectionRequest):
     )
 
     # If the target agent's task has already finished, re-trigger it so mid-run injection immediately takes effect
-    target_task_id = "task_skeptic_audit" if agent_key == "skeptic" else f"task_{agent_key}_analysis"
     if supervisor.current_state and target_task_id in supervisor.current_state.tasks:
         task = supervisor.current_state.tasks[target_task_id]
         if task.status == "done":
@@ -279,7 +319,6 @@ async def inject_failure(decision_id: str, req: FailureInjectionRequest):
             task.attempts = 0
             supervisor.current_state.findings = [f for f in supervisor.current_state.findings if f.task_id != target_task_id]
             supervisor.current_state.assumptions = [a for a in supervisor.current_state.assumptions if a.proposed_by != agent_key]
-            agent_up = agent_key.upper()
             supervisor.current_state.recovered_agents = [a for a in supervisor.current_state.recovered_agents if a != agent_up]
             supervisor.current_state.degraded_agents = [a for a in supervisor.current_state.degraded_agents if a != agent_up]
 
@@ -289,6 +328,8 @@ async def inject_failure(decision_id: str, req: FailureInjectionRequest):
                     supervisor.current_state.mark_task_done(task.id)
                     if supervisor.current_state.recovered_agents or supervisor.current_state.degraded_agents:
                         supervisor.current_state.status = "degraded"
+                    else:
+                        supervisor.current_state.status = "completed"
                     if supervisor.current_state.report is not None:
                         await supervisor._run_report_finalize_task(task, supervisor.current_state)
             asyncio.create_task(_rerun_task())

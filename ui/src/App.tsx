@@ -537,7 +537,23 @@ export const App: React.FC = () => {
               </div>
             )}
 
-            <div className="pt-2 text-right">
+            <div className="pt-2 flex items-center justify-between">
+              {(selectedFinding.recovered_via_backup || selectedFinding.degraded) ? (
+                <button
+                  onClick={async () => {
+                    try {
+                      await handleInjectFault(selectedFinding.agent, 'heal');
+                      setSelectedFinding(null);
+                    } catch (e: any) {
+                      console.error(e);
+                    }
+                  }}
+                  className="px-4 py-1.5 bg-emerald-500/20 hover:bg-emerald-500/30 text-emerald-300 border border-emerald-500/30 text-xs font-semibold rounded-lg transition flex items-center gap-1.5"
+                >
+                  <span>🛡️</span>
+                  <span>Re-inject & Restore Primary {selectedFinding.agent}</span>
+                </button>
+              ) : <div />}
               <button
                 onClick={() => setSelectedFinding(null)}
                 className="px-4 py-1.5 bg-slate-800 hover:bg-slate-700 text-xs font-semibold text-white rounded-lg transition"
